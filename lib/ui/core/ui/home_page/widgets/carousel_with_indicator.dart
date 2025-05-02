@@ -116,6 +116,9 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
         // with the appropriate viewportFraction
         final items = _viewModel.items;
       
+        MediaQueryData mediaQuery = MediaQuery.of(context);
+        double screenWidth = mediaQuery.size.width;
+
         // Return the carousel widget
         return ExpandableCarousel.builder(
           itemCount: items.length,
@@ -124,7 +127,7 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
             pageSnapping: true,
             padEnds: false,
             physics: const ClampingScrollPhysics(),
-            viewportFraction: items.length == 1 ? 1.0 : widget.viewportFraction,
+            viewportFraction: items.length == 1 ? 1.0 : (screenWidth > 600 ? 0.4 : 0.9),
           ),
           itemBuilder:(context, index, viewPageIndex) {
             final item = items[index];                  
