@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/view_models/carousel_view_model.dart';
-
+import 'package:flutter_carousel_widget/flutter_carousel_widget.dart';
 
 class CarouselWithIndicator extends StatefulWidget {
   final double viewportFraction;
@@ -21,7 +21,6 @@ class CarouselWithIndicator extends StatefulWidget {
 }
 
 class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
-  late PageController _pageController;
   late CarouselViewModel _viewModel;
   int _currentPage = 0;
 
@@ -35,25 +34,14 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
     if (widget.viewModel == null) {
       _viewModel.loadItems();
     }
-    
-    _initializePageController();
   }
   
-  void _initializePageController() {
-    // Initialize with default values, will be updated in build method
-    _pageController = PageController(
-      initialPage: 0,
-      viewportFraction: 0.9,
-    );
-  }
-
   @override
   void dispose() {
     // Only dispose the ViewModel if we created it locally
     if (widget.viewModel == null) {
       _viewModel.dispose();
     }
-    _pageController.dispose();
     super.dispose();
   }
   
@@ -74,12 +62,20 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
 
   @override
   Widget build(BuildContext context) {
+    // Get theme colors
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    
     // Use AnimatedBuilder to listen to ViewModel changes
     return AnimatedBuilder(
       animation: _viewModel,
       builder: (context, _) {
         if (_viewModel.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: CircularProgressIndicator(
+              color: colorScheme.primary,
+            ),
+          );
         }
         
         if (_viewModel.hasError) {
@@ -88,7 +84,7 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
               padding: const EdgeInsets.all(16.0),
               child: Text(
                 'Error: ${_viewModel.error}',
-                style: const TextStyle(color: Colors.red),
+                style: TextStyle(color: colorScheme.error),
               ),
             ),
           );
@@ -99,14 +95,15 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
           return Center(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: widget.horizontalPadding),
-              child: const Card(
+              child: Card(
+                color: colorScheme.surfaceVariant,
                 child: Padding(
-                  padding: EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(16.0),
                   child: Text(
                     'No recent analyses available',
-                    style: TextStyle(
-                      fontSize: 16,
+                    style: textTheme.bodyMedium?.copyWith(
                       fontStyle: FontStyle.italic,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -118,113 +115,82 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
         // If items count changed, we need to recreate the PageController
         // with the appropriate viewportFraction
         final items = _viewModel.items;
-        if (_pageController.viewportFraction != 
-            (items.length == 1 ? 1.0 : widget.viewportFraction)) {
-          _pageController.dispose();
-          _pageController = PageController(
-            initialPage: _currentPage < items.length ? _currentPage : 0,
+      
+        // Return the carousel widget
+        return ExpandableCarousel.builder(
+          itemCount: items.length,
+          options: ExpandableCarouselOptions(
+            showIndicator: false,
+            pageSnapping: true,
+            padEnds: false,
+            physics: const ClampingScrollPhysics(),
             viewportFraction: items.length == 1 ? 1.0 : widget.viewportFraction,
-          );
-        }
-
-        return Column(
-          children: [
-            Expanded(
-              child: Container(
-                padding: EdgeInsets.only(left: widget.horizontalPadding),
-                child: PageView.builder(
-                  controller: _pageController,
-                  pageSnapping: true,
-                  padEnds: false,
-                  onPageChanged: (int page) {
-                    setState(() {
-                      _currentPage = page;
-                    });
-                  },
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    
-                    return Padding(
-                      padding: const EdgeInsets.only(
-                        right: 16.0, 
-                        top: 8.0, 
-                        bottom: 8.0,
-                      ),
-                      child: GestureDetector(
-                        onTap: () {
-                          if (widget.onItemTap != null) {
-                            widget.onItemTap!(item);
-                          }
-                        },
-                        child: Card(
-                          elevation: 1,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  item.title,
-                                  style: const TextStyle(
-                                    fontSize: 18, 
-                                    fontWeight: FontWeight.bold
-                                  ),
-                                ),
-                                if (item.subtitle != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4.0),
-                                    child: Text(
-                                      item.subtitle!,
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                  ),
-                                if (item.date != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 8.0),
-                                    child: Text(
-                                      _formatDate(item.date!),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ),
-                              ],
+          ),
+          itemBuilder:(context, index, viewPageIndex) {
+            final item = items[index];                  
+            return Padding(
+              padding: const EdgeInsets.only(
+                right: 16.0, 
+                top: 8.0, 
+                bottom: 24.0,
+              ),
+              child: GestureDetector(
+                onTap: () {
+                  if (widget.onItemTap != null) {
+                    widget.onItemTap!(item);
+                  }
+                },
+                child: Card(
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      if (widget.onItemTap != null) {
+                        widget.onItemTap!(item);
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            item.title,
+                            style: textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
+                          if (item.subtitle != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(
+                                item.subtitle!,
+                                style: textTheme.bodyMedium,
+                              ),
+                            ),
+                          if (item.date != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                _formatDate(item.date!),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ),
-            ),
-            if (items.length > 1)
-              Container(
-                margin: const EdgeInsets.only(top: 8.0, bottom: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List<Widget>.generate(items.length, (int index) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                      height: 8.0,
-                      width: 8.0,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _currentPage == index
-                            ? Colors.blue
-                            : Colors.grey.withOpacity(0.5),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-          ],
+            );
+          }
         );
       },
     );

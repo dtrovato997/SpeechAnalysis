@@ -14,12 +14,24 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Get theme colors
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Scaffold(
       appBar: AppBar(
-        leading: const Icon(Icons.android),
-        title: const Text('Speech Analysis'),
+        leading: Icon(Icons.android, color: colorScheme.primary),
+        backgroundColor: colorScheme.surface,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings, color: colorScheme.primary),
+            onPressed: () {
+              // Handle settings button press
+            },
+          ),
+        ],
       ),
+      backgroundColor: colorScheme.background,
       body: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
@@ -43,7 +55,6 @@ class _HomePageState extends State<HomePage> {
                     ),
 
                     Container(
-                      // Fixed height for the cards
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -58,15 +69,14 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 0,
+        backgroundColor: colorScheme.surface,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: colorScheme.onSurfaceVariant,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.list_alt_outlined),
             label: 'Analysis',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
           ),
         ],
       ),
@@ -74,24 +84,28 @@ class _HomePageState extends State<HomePage> {
   }
 
   Padding buildTitleSection() {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Padding(
-      padding: EdgeInsets.only(
-        top: 16.0,
-        left: horizontalPadding,
-        right: horizontalPadding,
-        bottom: 12.0,
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: 14.0,
       ),
-      child: const Align(
-        alignment: Alignment.center,
-        child: Text(
-          'Start new analysis',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+      child: Text(
+        'Start new analysis',
+        style: textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.bold,
         ),
+        softWrap: true,
+        overflow: TextOverflow.visible,
       ),
     );
   }
 
   Column createRecentAnalysisSection() {
+    final textTheme = Theme.of(context).textTheme;
+    
     return Column(
       children: [
         // Title for Recent Analyses
@@ -103,17 +117,20 @@ class _HomePageState extends State<HomePage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Recent analyses',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                softWrap: true,
+                overflow: TextOverflow.visible,
               ),
             ],
           ),
         ),
 
-        // Carousel with fixed height
-        Container(
-          height: 180.0,
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
           child: CarouselWithIndicator(
             horizontalPadding: horizontalPadding,
             onItemTap: (item) {
@@ -121,22 +138,23 @@ class _HomePageState extends State<HomePage> {
             },
           ),
         ),
-
-        // Bottom padding
-        SizedBox(height: 16.0),
       ],
     );
   }
 
   Widget _buildFixedHeightCards() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           // Box 1: Record Speech
           Container(
-            height: 160.0, // Fixed height card
+            constraints: const BoxConstraints(
+              minHeight: 160.0, // Fixed height card
+            ),
             child: Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -154,13 +172,13 @@ class _HomePageState extends State<HomePage> {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade100,
+                          color: colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(40),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.mic,
                           size: 48,
-                          color: Colors.blue,
+                          color: colorScheme.onPrimaryContainer,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -168,21 +186,17 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
+                          children: [
                             Text(
                               'Record Speech',
-                              style: TextStyle(
-                                fontSize: 20,
+                              style: textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             Text(
                               'Record and analyze your speech in real-time',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black87,
-                              ),
+                              style: textTheme.bodyMedium,
                             ),
                           ],
                         ),
@@ -198,7 +212,9 @@ class _HomePageState extends State<HomePage> {
 
           // Box 2: Upload Audio
           Container(
-            height: 160.0, // Fixed height card
+            constraints: const BoxConstraints(
+              minHeight: 160, // Fixed height card
+            ),
             child: Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -216,13 +232,13 @@ class _HomePageState extends State<HomePage> {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: Colors.green.shade100,
+                          color: colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(40),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.upload_file,
                           size: 48,
-                          color: Colors.green,
+                          color: colorScheme.onSecondaryContainer,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -230,21 +246,17 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
+                          children: [
                             Text(
                               'Upload Audio',
-                              style: TextStyle(
-                                fontSize: 20,
+                              style: textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             Text(
                               'Analyze existing audio recordings',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black87,
-                              ),
+                              style: textTheme.bodyMedium,
                             ),
                           ],
                         ),
