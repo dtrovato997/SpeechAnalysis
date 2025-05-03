@@ -16,10 +16,14 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     // Get theme colors
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Scaffold(
       appBar: AppBar(
-        leading: Icon(Icons.android, color: colorScheme.primary),
+        title: Text(
+          'Speech Analysis',
+          style: TextStyle(color: colorScheme.primary,fontWeight: FontWeight.bold),
+          textAlign: TextAlign.left
+        ),
         backgroundColor: colorScheme.surface,
         elevation: 0,
         actions: [
@@ -85,27 +89,28 @@ class _HomePageState extends State<HomePage> {
 
   Padding buildTitleSection() {
     final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: horizontalPadding,
         vertical: 14.0,
       ),
-      child: Text(
-        'Start new analysis',
-        style: textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.bold,
+      child: Align(
+        alignment: Alignment.centerLeft, // This explicitly sets left alignment
+        child: Text(
+          'Start new analysis',
+          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          softWrap: true,
+          overflow: TextOverflow.visible,
+          textAlign: TextAlign.left, // This also ensures text is left-aligned
         ),
-        softWrap: true,
-        overflow: TextOverflow.visible,
       ),
     );
   }
 
   Column createRecentAnalysisSection() {
     final textTheme = Theme.of(context).textTheme;
-    
+
     return Column(
       children: [
         // Title for Recent Analyses
@@ -145,7 +150,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildFixedHeightCards() {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Column(
@@ -153,7 +158,7 @@ class _HomePageState extends State<HomePage> {
           // Box 1: Record Speech
           Container(
             constraints: const BoxConstraints(
-              minHeight: 160.0, // Fixed height card
+              minHeight: 120.0, // Fixed height card
             ),
             child: Card(
               elevation: 2,
@@ -195,7 +200,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Record and analyze your speech in real-time',
+                              'Record and analyze your speech',
                               style: textTheme.bodyMedium,
                             ),
                           ],
@@ -213,7 +218,7 @@ class _HomePageState extends State<HomePage> {
           // Box 2: Upload Audio
           Container(
             constraints: const BoxConstraints(
-              minHeight: 160, // Fixed height card
+              minHeight: 120, // Fixed height card
             ),
             child: Card(
               elevation: 2,
