@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/view_models/carousel_view_model.dart';
 import 'package:flutter_carousel_widget/flutter_carousel_widget.dart';
+import 'package:mobile_speech_recognition/utils/date_time_utils.dart';
 
 class CarouselWithIndicator extends StatefulWidget {
   final double viewportFraction;
@@ -167,19 +168,23 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (item.subtitle != null)
+                          if (item.status != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 4.0),
                               child: Text(
-                                item.subtitle!,
-                                style: textTheme.bodyMedium,
+                                item.status!,
+                                style: textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                  color: _getStatusColor(item.status!, colorScheme),
+                                ),
                               ),
                             ),
                           if (item.date != null)
+                            
                             Padding(
                               padding: const EdgeInsets.only(top: 8.0),
                               child: Text(
-                                _formatDate(item.date!),
+                                DateTimeUtils.getRelativeTimeSpan(item.date!),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: colorScheme.onSurfaceVariant,
@@ -199,7 +204,18 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
     );
   }
   
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+  _getStatusColor(String s, ColorScheme colorScheme) 
+  {
+    switch (s) {
+      case 'Pending':
+        return Colors.yellow.shade300;
+      case 'Completed':
+        return Colors.green.shade300;
+      case 'Failed':
+        return Colors.red.shade300;
+      default:
+        return colorScheme.onSurfaceVariant;
+    }
   }
+  
 }

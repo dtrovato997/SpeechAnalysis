@@ -1,20 +1,44 @@
 import 'package:flutter/foundation.dart';
+import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
+import 'package:mobile_speech_recognition/domain/models/audio_analysis.dart';
 
 /// Model class for carousel items
 class CarouselItem {
   final String title;
-  final String? subtitle;
+  final String? status;
   final String? imageUrl;
   final DateTime? date;
   final String? id;
 
   CarouselItem({
     required this.title,
-    this.subtitle,
+    this.status,
     this.imageUrl,
     this.date,
     this.id,
   });
+  
+  // Factory method to create a CarouselItem from an AudioAnalysis
+  factory CarouselItem.fromAudioAnalysis(AudioAnalysis analysis) {
+    // Calculate duration string if needed (this would require additional info)
+    String subtitle = '';
+    
+    // You could determine the subtitle based on the analysis state
+    if (analysis.completionDate != null) {
+      subtitle = 'Completed';
+    } else if (analysis.sendStatus == 1) { // Assuming 1 is TO_SEND based on spec
+      subtitle = 'Pending';
+    } else if (analysis.sendStatus == 4) { // Assuming 4 is FAILED based on spec
+      subtitle = 'Failed';
+    }
+    
+    return CarouselItem(
+      id: analysis.id?.toString(),
+      title: analysis.title,
+      status: subtitle,
+      date: analysis.creationDate,
+    );
+  }
 }
 
 /// ViewModel for managing carousel data
@@ -22,6 +46,7 @@ class CarouselViewModel extends ChangeNotifier {
   List<CarouselItem> _items = [];
   bool _isLoading = false;
   String? _error;
+  final AudioAnalysisRepository _audioAnalysisRepository = AudioAnalysisRepository();
 
   // Getters
   List<CarouselItem> get items => _items;
@@ -30,24 +55,25 @@ class CarouselViewModel extends ChangeNotifier {
   bool get hasError => _error != null;
   bool get isEmpty => _items.isEmpty;
 
-  // Load initial data
+ // Load recent analyses
   Future<void> loadItems() async {
     _setLoading(true);
     
     try {
-      // In a real app, you would fetch data from a service or repository
-      // For now, we'll simulate a network delay and use mock data
-      await Future.delayed(const Duration(milliseconds: 800));
+      // Fetch actual analyses from the repository
+      final analyses = await _audioAnalysisRepository.getRecentAnalyses(limit: 5);
       
-      _items = _getMockItems();
+      // Convert analyses to carousel items
+      _items = analyses.map((analysis) => CarouselItem.fromAudioAnalysis(analysis)).toList();
       _error = null;
     } catch (e) {
-      _error = "Failed to load items: ${e.toString()}";
+      _error = "Failed to load analyses: ${e.toString()}";
+      // Fallback to empty list
+      _items = [];
     } finally {
       _setLoading(false);
     }
   }
-
   // Add a new item
   void addItem(CarouselItem item) {
     _items.add(item);
@@ -70,29 +96,5 @@ class CarouselViewModel extends ChangeNotifier {
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
-  }
-
-  // Mock data for testing
-  List<CarouselItem> _getMockItems() {
-    return [
-      CarouselItem(
-        id: '1',
-        title: 'Speech Analysis #1',
-        subtitle: 'Duration: 2m 30s',
-        date: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-      CarouselItem(
-        id: '2',
-        title: 'Speech Analysis #2',
-        subtitle: 'Duration: 4m 15s',
-        date: DateTime.now().subtract(const Duration(days: 3)),
-      ),
-      CarouselItem(
-        id: '3',
-        title: 'Speech Analysis #3',
-        subtitle: 'Duration: 1m 45s',
-        date: DateTime.now().subtract(const Duration(days: 5)),
-      ),
-    ];
   }
 }

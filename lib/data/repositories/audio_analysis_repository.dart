@@ -34,6 +34,23 @@ class AudioAnalysisRepository {
     return list;
   }
 
+    // Get recent analyses with optional limit
+  Future<List<AudioAnalysis>> getRecentAnalyses({int limit = 5}) async {
+    final db = await _databaseService.database;
+    
+    // Query recent analyses ordered by creation date (newest first)
+    final maps = await db.query(
+      DatabaseConfig.analysisTable,
+      orderBy: 'CREATION_DATE DESC',
+      limit: limit,
+    );
+    
+    // Create a list of analyses
+    final analyses = maps.map((map) => AudioAnalysis.fromMap(map)).toList();
+    
+    return analyses;
+  }
+
   Future<void> deleteAudioAnalysis(int id) async {
     final db = await _databaseService.database;
     await db.delete(
