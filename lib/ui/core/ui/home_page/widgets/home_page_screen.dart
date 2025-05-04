@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/widgets/carousel_with_indicator.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/record_audio/widgets/record_audio_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -167,7 +168,19 @@ class _HomePageState extends State<HomePage> {
               ),
               child: InkWell(
                 onTap: () {
-                  // Handle record speech tap
+
+                  showModalBottomSheet(
+                    context: context,
+                    isDismissible: false,
+                    enableDrag: false,
+                    isScrollControlled: true,
+                    useSafeArea: true,
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.85,
+                  ),
+                    builder: (BuildContext context) {
+                      return RecordAudioScreen();
+                    });
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
