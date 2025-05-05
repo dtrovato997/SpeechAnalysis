@@ -175,9 +175,6 @@ class _HomePageState extends State<HomePage> {
                     enableDrag: false,
                     isScrollControlled: true,
                     useSafeArea: true,
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(context).size.height * 0.85,
-                  ),
                     builder: (BuildContext context) {
                       return RecordAudioScreen();
                     });

@@ -1,5 +1,8 @@
+import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class RecordAudioScreen extends StatefulWidget {
   const RecordAudioScreen({super.key});
@@ -14,24 +17,66 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
   bool _hasStartedRecording = false; // Track if recording has ever started
   int _recordingSeconds = 0;
   Timer? _timer;
+  late RecorderController recorderController;
+  String? recordedFilePath;
 
   // Maximum recording time (2 minutes as per requirements)
-  final int _maxRecordingSeconds = 120;
+  final int _maxRecordingSeconds = 30;
 
   @override
   void initState() {
     super.initState();
-    // Don't start recording automatically
-    // Just initialize in paused state
+    _initRecorder();
+  }
+
+  Future<void> _initRecorder() async {
+    // Initialize the recorder controller
+    recorderController =
+        RecorderController()
+          ..androidEncoder = AndroidEncoder.aac
+          ..androidOutputFormat = AndroidOutputFormat.mpeg4
+          ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
+          ..sampleRate = 44100
+          ..bitRate = 128000;
+      
+
+    // Check microphone permission
+    await recorderController.checkPermission();
+
+    // Set the update frequency for waveform display
+    recorderController.updateFrequency = const Duration(milliseconds: 100);
   }
 
   @override
   void dispose() {
     _stopTimer();
+    recorderController.dispose();
     super.dispose();
   }
 
-  void _startRecording() {
+  Future<String> _getRecordingPath() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    return '${appDir.path}/recording_$timestamp.m4a';
+  }
+
+  Future<void> _startRecording() async {
+    if (!recorderController.hasPermission) {
+      await recorderController.checkPermission();
+      if (!recorderController.hasPermission) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Microphone permission not granted'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+    }
+
+    final path = await _getRecordingPath();
+    await recorderController.record(path: path);
+
     setState(() {
       _isRecording = true;
       _isPaused = false;
@@ -40,36 +85,50 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
 
     _startTimer();
 
-    // Here you would integrate with actual recording functionality
+    // Listen to current duration updates
+    recorderController.onCurrentDuration.listen((duration) {
+      // This could be used to update UI if needed
+      // We already have a timer, but this could be used for more precision
+    });
   }
 
-  void _pauseRecording() {
+  Future<void> _pauseRecording() async {
     // Only allow pause if already recording
-    if (!_isRecording) {
-      _startRecording();
+    if (!_isRecording && !_hasStartedRecording) {
+      await _startRecording();
+      return;
+    } else if (!_isRecording && _hasStartedRecording) {
+      // Resume recording after it was paused
+      await recorderController.record();
+      setState(() {
+        _isRecording = true;
+        _isPaused = false;
+      });
+      _startTimer();
       return;
     }
 
+    // Pause the current recording
+    await recorderController.pause();
+
     setState(() {
-      _isPaused = !_isPaused;
-    });
-
-    if (_isPaused) {
-      _stopTimer();
-    } else {
-      _startTimer();
-    }
-
-    // Here you would pause/resume the actual recording
-  }
-
-  void _stopRecording() {
-    _stopTimer();
-    setState(() {
+      _isPaused = true;
       _isRecording = false;
     });
 
-    // Here you would stop the actual recording
+    _stopTimer();
+  }
+
+  Future<void> _stopRecording() async {
+    _stopTimer();
+
+    if (_isRecording || _hasStartedRecording) {
+      recordedFilePath = await recorderController.stop();
+
+      setState(() {
+        _isRecording = false;
+      });
+    }
   }
 
   void _startTimer() {
@@ -101,12 +160,9 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
   String _formatRemainingTime(int secondsRemaining) {
     int hours = secondsRemaining ~/ 3600;
     int minutes = (secondsRemaining % 3600) ~/ 60;
+    int seconds = secondsRemaining % 60;
 
-    if (hours > 0) {
-      return 'you can keep recording $hours hours $minutes minutes';
-    } else {
-      return 'you can keep recording $minutes minutes';
-    }
+    return 'you can keep recording $seconds seconds';
   }
 
   @override
@@ -115,13 +171,12 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
     int remainingSeconds = _maxRecordingSeconds - _recordingSeconds;
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         CreateTimerDisplaySection(context, remainingSeconds, colorScheme),
 
         // SECTION 2: Waveform visualization
-        Expanded(
-          child: CreateWaveFormVisualizationSection(colorScheme, context),
-        ),
+        CreateWaveFormVisualizationSection(colorScheme, context),
 
         // SECTION 3: Control buttons with perfect alignment
         CreatePlayerButtonsSection(
@@ -130,11 +185,16 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
           hasStartedRecording: _hasStartedRecording,
           onCancel: _showCancelConfirmationDialog,
           onRecordPause: _pauseRecording,
-          onSave: () {
+          onSave: () async {
             // Only allow save if recording has started
             if (_hasStartedRecording) {
-              _stopRecording();
+              await _stopRecording();
               // Here you would proceed to the metadata form
+              if (recordedFilePath != null) {
+                // You can add code here to handle the saved recording
+                // For example, pass the file path to another screen
+                print('Recording saved at: $recordedFilePath');
+              }
               Navigator.pop(context);
             } else {
               // Show a message if trying to save without recording
@@ -217,36 +277,39 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
   ) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.5),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Center(
-        // Placeholder for waveform visualization
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // This would be replaced with actual waveform visualization
-            Icon(
-              Icons.graphic_eq,
-              size: 80,
-              color:
-                  _isRecording && !_isPaused
-                      ? colorScheme.primary
-                      : colorScheme.onSurfaceVariant.withOpacity(0.3),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _hasStartedRecording
-                  ? "Waveform Visualization"
-                  : "Start recording to see waveform",
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+      child: LayoutBuilder(
+        builder:
+            (context, constraints) => Center(
+              child: AudioWaveforms(
+                size: Size(constraints.maxWidth, constraints.maxHeight >= 300 ? 300 : constraints.maxHeight),
+                recorderController: recorderController,
+                backgroundColor: colorScheme.surfaceBright,
+                waveStyle: WaveStyle(
+                  waveColor: colorScheme.primary,
+                  extendWaveform: true,
+                  durationLinesHeight: 16.0,
+                  showMiddleLine: false,
+                  spacing: 5.0,
+                  scaleFactor: 200,
+                  waveThickness: 3,
+                  showDurationLabel: true,
+                  
+                  durationLinesColor: colorScheme.onSurfaceVariant,
+                  durationStyle: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                  
+                ),
+                
+                enableGesture: true,
+                shouldCalculateScrolledPosition: true,
+
               ),
             ),
-          ],
-        ),
       ),
     );
   }
@@ -272,7 +335,14 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
               child: const Text('No'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
+                // Stop recording and discard
+                if (_isRecording) {
+                  await recorderController.stop();
+                }
+                // Reset controller
+                recorderController.refresh();
+
                 Navigator.of(context).pop();
                 Navigator.of(context).pop(); // Exit recording screen
               },
