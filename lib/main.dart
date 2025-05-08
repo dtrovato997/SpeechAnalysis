@@ -59,6 +59,6 @@ class MyApp extends StatelessWidget {
     MaterialTheme theme = MaterialTheme(textTheme);
 
     // Use the light or dark theme based on platform brightness
-    return brightness == Brightness.light ? theme.light() : theme.dark();
+    return theme.light();
   }
 }
