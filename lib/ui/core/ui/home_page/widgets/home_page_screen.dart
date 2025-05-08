@@ -170,6 +170,9 @@ class _HomePageState extends State<HomePage> {
                 onTap: () {
 
                   showModalBottomSheet(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.95,
+                    ),
                     context: context,
                     isDismissible: false,
                     enableDrag: false,

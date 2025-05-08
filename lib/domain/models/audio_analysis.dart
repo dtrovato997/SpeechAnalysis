@@ -15,7 +15,6 @@ class AudioAnalysis {
   final bool? ageFeedback;
   final bool? genderFeedback;
   final bool? nationalityFeedback;
-  final int? retryCount;
   List<Tag>? tags; // Changed from String? tags to List<Tag>? tags
 
   AudioAnalysis({
@@ -33,8 +32,7 @@ class AudioAnalysis {
     this.nationalityResult,
     this.ageFeedback,
     this.genderFeedback,
-    this.nationalityFeedback,
-    this.retryCount = 0,
+    this.nationalityFeedback
   });
 
   // Factory method to create Analysis from a Map
@@ -57,7 +55,6 @@ class AudioAnalysis {
       ageFeedback: map['AGE_USER_FEEDBACK'] == 1,
       genderFeedback: map['GENDER_USER_FEEDBACK'] == 1,
       nationalityFeedback: map['NATIONALITY_USER_FEEDBACK'] == 1,
-      retryCount: map['RETRY_COUNT'] ?? 0,
       // Tags are loaded separately, so set to null here
       tags: null,
     );
@@ -80,8 +77,7 @@ class AudioAnalysis {
       'NATIONALITY_RESULT': nationalityResult,
       'AGE_USER_FEEDBACK': ageFeedback != null ? (ageFeedback! ? 1 : 0) : null,
       'GENDER_USER_FEEDBACK': genderFeedback != null ? (genderFeedback! ? 1 : 0) : null,
-      'NATIONALITY_USER_FEEDBACK': nationalityFeedback != null ? (nationalityFeedback! ? 1 : 0) : null,
-      'RETRY_COUNT': retryCount,
+      'NATIONALITY_USER_FEEDBACK': nationalityFeedback != null ? (nationalityFeedback! ? 1 : 0) : null
     };
   }
 
@@ -101,8 +97,7 @@ class AudioAnalysis {
     String? nationalityResult,
     bool? ageFeedback,
     bool? genderFeedback,
-    bool? nationalityFeedback,
-    int? retryCount,
+    bool? nationalityFeedback
   }) {
     return AudioAnalysis(
       id: id ?? this.id,
@@ -119,8 +114,7 @@ class AudioAnalysis {
       nationalityResult: nationalityResult ?? this.nationalityResult,
       ageFeedback: ageFeedback ?? this.ageFeedback,
       genderFeedback: genderFeedback ?? this.genderFeedback,
-      nationalityFeedback: nationalityFeedback ?? this.nationalityFeedback,
-      retryCount: retryCount ?? this.retryCount,
+      nationalityFeedback: nationalityFeedback ?? this.nationalityFeedback
     );
   }
 }

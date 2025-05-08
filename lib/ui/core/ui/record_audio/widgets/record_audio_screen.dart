@@ -1,8 +1,9 @@
-import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter/material.dart';
-import 'dart:async';
-import 'dart:io';
+import 'package:audio_waveforms/audio_waveforms.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/record_audio/view_models/audio_recording_view_model.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/record_audio/widgets/save_audio_dialog.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 
 class RecordAudioScreen extends StatefulWidget {
   const RecordAudioScreen({super.key});
@@ -12,208 +13,80 @@ class RecordAudioScreen extends StatefulWidget {
 }
 
 class _RecordAudioScreenState extends State<RecordAudioScreen> {
-  bool _isRecording = false;
-  bool _isPaused = true; // Initially paused
-  bool _hasStartedRecording = false; // Track if recording has ever started
-  int _recordingSeconds = 0;
-  Timer? _timer;
-  late RecorderController recorderController;
-  String? recordedFilePath;
-
-  // Maximum recording time (2 minutes as per requirements)
-  final int _maxRecordingSeconds = 30;
+  late AudioRecordingViewModel viewModel;
 
   @override
   void initState() {
     super.initState();
-    _initRecorder();
-  }
-
-  Future<void> _initRecorder() async {
-    // Initialize the recorder controller
-    recorderController =
-        RecorderController()
-          ..androidEncoder = AndroidEncoder.aac
-          ..androidOutputFormat = AndroidOutputFormat.mpeg4
-          ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
-          ..sampleRate = 44100
-          ..bitRate = 128000;
-      
-
-    // Check microphone permission
-    await recorderController.checkPermission();
-
-    // Set the update frequency for waveform display
-    recorderController.updateFrequency = const Duration(milliseconds: 100);
+    viewModel = AudioRecordingViewModel();
   }
 
   @override
   void dispose() {
-    _stopTimer();
-    recorderController.dispose();
+    viewModel.dispose();
     super.dispose();
-  }
-
-  Future<String> _getRecordingPath() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return '${appDir.path}/recording_$timestamp.m4a';
-  }
-
-  Future<void> _startRecording() async {
-    if (!recorderController.hasPermission) {
-      await recorderController.checkPermission();
-      if (!recorderController.hasPermission) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Microphone permission not granted'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-        return;
-      }
-    }
-
-    final path = await _getRecordingPath();
-    await recorderController.record(path: path);
-
-    setState(() {
-      _isRecording = true;
-      _isPaused = false;
-      _hasStartedRecording = true; // User has started recording
-    });
-
-    _startTimer();
-
-    // Listen to current duration updates
-    recorderController.onCurrentDuration.listen((duration) {
-      // This could be used to update UI if needed
-      // We already have a timer, but this could be used for more precision
-    });
-  }
-
-  Future<void> _pauseRecording() async {
-    // Only allow pause if already recording
-    if (!_isRecording && !_hasStartedRecording) {
-      await _startRecording();
-      return;
-    } else if (!_isRecording && _hasStartedRecording) {
-      // Resume recording after it was paused
-      await recorderController.record();
-      setState(() {
-        _isRecording = true;
-        _isPaused = false;
-      });
-      _startTimer();
-      return;
-    }
-
-    // Pause the current recording
-    await recorderController.pause();
-
-    setState(() {
-      _isPaused = true;
-      _isRecording = false;
-    });
-
-    _stopTimer();
-  }
-
-  Future<void> _stopRecording() async {
-    _stopTimer();
-
-    if (_isRecording || _hasStartedRecording) {
-      recordedFilePath = await recorderController.stop();
-
-      setState(() {
-        _isRecording = false;
-      });
-    }
-  }
-
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        if (_recordingSeconds < _maxRecordingSeconds) {
-          _recordingSeconds++;
-        } else {
-          // Auto-stop at max duration
-          _stopRecording();
-        }
-      });
-    });
-  }
-
-  void _stopTimer() {
-    _timer?.cancel();
-    _timer = null;
-  }
-
-  String _formatDuration(int totalSeconds) {
-    int minutes = totalSeconds ~/ 60;
-    int seconds = totalSeconds % 60;
-    int milliseconds = 0; // In a real app, you'd track milliseconds too
-
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}.${milliseconds.toString().padLeft(2, '0')}';
-  }
-
-  String _formatRemainingTime(int secondsRemaining) {
-    int hours = secondsRemaining ~/ 3600;
-    int minutes = (secondsRemaining % 3600) ~/ 60;
-    int seconds = secondsRemaining % 60;
-
-    return 'you can keep recording $seconds seconds';
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    int remainingSeconds = _maxRecordingSeconds - _recordingSeconds;
+    return ChangeNotifierProvider.value(
+      value: viewModel,
+      child: Consumer<AudioRecordingViewModel>(
+        builder: (context, model, child) {
+          final colorScheme = Theme.of(context).colorScheme;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Timer display section
+              CreateTimerDisplaySection(context, model, colorScheme),
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        CreateTimerDisplaySection(context, remainingSeconds, colorScheme),
+              // Waveform visualization section
+              CreateWaveFormVisualizationSection(model, colorScheme, context),
 
-        // SECTION 2: Waveform visualization
-        CreateWaveFormVisualizationSection(colorScheme, context),
-
-        // SECTION 3: Control buttons with perfect alignment
-        CreatePlayerButtonsSection(
-          isRecording: _isRecording,
-          isPaused: _isPaused,
-          hasStartedRecording: _hasStartedRecording,
-          onCancel: _showCancelConfirmationDialog,
-          onRecordPause: _pauseRecording,
-          onSave: () async {
-            // Only allow save if recording has started
-            if (_hasStartedRecording) {
-              await _stopRecording();
-              // Here you would proceed to the metadata form
-              if (recordedFilePath != null) {
-                // You can add code here to handle the saved recording
-                // For example, pass the file path to another screen
-                print('Recording saved at: $recordedFilePath');
-              }
-              Navigator.pop(context);
-            } else {
-              // Show a message if trying to save without recording
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please record some audio first'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            }
-          },
-        ),
-      ],
+              // Control buttons section
+              CreatePlayerButtonsSection(
+                model: model,
+                onCancel: _showCancelConfirmationDialog,
+                onSave: () async {
+                  // Only allow save if recording has started
+                  if (model.hasStartedRecording) {
+                    if (model.isRecording) {
+                      await model.pauseRecording();
+                    }
+                    
+                    // Show the save dialog
+                    if (model.recordedFilePath != null) {
+                      await showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return ChangeNotifierProvider.value(
+                            value: model, // Pass the same ViewModel
+                            child: SaveAudioDialog(),
+                          );
+                        },
+                      );
+                    }
+                  } else {
+                    // Show a message if trying to save without recording
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please record some audio first'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
   Widget CreateTimerDisplaySection(
     BuildContext context,
-    int remainingSeconds,
+    AudioRecordingViewModel model,
     ColorScheme colorScheme,
   ) {
     return Padding(
@@ -223,28 +96,29 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
         children: [
           // Large timer display
           Text(
-            _formatDuration(_recordingSeconds),
+            model.formatDuration(model.remainingSeconds),
             style: Theme.of(context).textTheme.displayMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color:
-                  remainingSeconds < 30
-                      ? colorScheme.error
-                      : colorScheme.onSurface,
+              color: colorScheme.onSurface,
             ),
           ),
 
-          // Recording status - only show if recording has started
-          if (_hasStartedRecording)
+          // Recording status
+          if (model.hasStartedRecording)
             Text(
-              _isPaused ? "Paused" : "Recording",
+              model.isCompleted
+                  ? "Recording completed"
+                  : (model.isPaused ? "Paused" : "Recording"),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: _isPaused ? colorScheme.error : colorScheme.primary,
+                color: model.isCompleted
+                    ? colorScheme.secondary
+                    : (model.isPaused ? colorScheme.error : colorScheme.primary),
                 fontWeight: FontWeight.w500,
               ),
             ),
 
           // Show "Tap to start recording" if never started
-          if (!_hasStartedRecording)
+          if (!model.hasStartedRecording)
             Text(
               "Tap the microphone to start recording",
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -252,71 +126,53 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-
-          // Remaining time
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Text(
-              _formatRemainingTime(remainingSeconds),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color:
-                    remainingSeconds < 30
-                        ? colorScheme.error
-                        : colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget CreateWaveFormVisualizationSection(
+    AudioRecordingViewModel model,
     ColorScheme colorScheme,
     BuildContext context,
   ) {
+    // Calculate an appropriate height based on screen size
+    final screenHeight = MediaQuery.of(context).size.height;
+    final waveformHeight = (screenHeight * 0.25).clamp(150.0, 300.0);
+
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: LayoutBuilder(
-        builder:
-            (context, constraints) => Center(
-              child: AudioWaveforms(
-                size: Size(constraints.maxWidth, constraints.maxHeight >= 300 ? 300 : constraints.maxHeight),
-                recorderController: recorderController,
-                backgroundColor: colorScheme.surfaceBright,
-                waveStyle: WaveStyle(
-                  waveColor: colorScheme.primary,
-                  extendWaveform: true,
-                  durationLinesHeight: 16.0,
-                  showMiddleLine: false,
-                  spacing: 5.0,
-                  scaleFactor: 200,
-                  waveThickness: 3,
-                  showDurationLabel: true,
-                  
-                  durationLinesColor: colorScheme.onSurfaceVariant,
-                  durationStyle: TextStyle(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-                  
-                ),
-                
-                enableGesture: true,
-                shouldCalculateScrolledPosition: true,
-
-              ),
-            ),
+      height: waveformHeight,
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
+      child: AudioWaveforms(
+        size: Size(MediaQuery.of(context).size.width, waveformHeight),
+        recorderController: model.recorderController,
+        backgroundColor: colorScheme.surfaceBright,
+        waveStyle: WaveStyle(
+          waveColor: colorScheme.primary,
+          extendWaveform: true,
+          durationLinesHeight: 16.0,
+          showMiddleLine: false,
+          spacing: 5.0,
+          scaleFactor: 200,
+          waveThickness: 3,
+          showDurationLabel: true,
+          durationLinesColor: colorScheme.onSurfaceVariant,
+          durationStyle: TextStyle(
+            color: colorScheme.onSurfaceVariant,
+            fontSize: 12,
+          ),
+        ),
+        enableGesture: true,
+        shouldCalculateScrolledPosition: true,
       ),
     );
   }
 
   Future<void> _showCancelConfirmationDialog() async {
     // If recording hasn't started, just close without confirmation
-    if (!_hasStartedRecording) {
+    if (!viewModel.hasStartedRecording) {
       Navigator.pop(context);
       return;
     }
@@ -336,13 +192,8 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
             ),
             TextButton(
               onPressed: () async {
-                // Stop recording and discard
-                if (_isRecording) {
-                  await recorderController.stop();
-                }
-                // Reset controller
-                recorderController.refresh();
-
+                // Reset recording and exit
+                await viewModel.resetRecording();
                 Navigator.of(context).pop();
                 Navigator.of(context).pop(); // Exit recording screen
               },
@@ -355,22 +206,16 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
   }
 }
 
-// Buttons with aligned bottoms
+// Add this to the RecordAudioScreen class
 class CreatePlayerButtonsSection extends StatelessWidget {
-  final bool isRecording;
-  final bool isPaused;
-  final bool hasStartedRecording;
+  final AudioRecordingViewModel model;
   final VoidCallback onCancel;
-  final VoidCallback onRecordPause;
   final VoidCallback onSave;
 
   const CreatePlayerButtonsSection({
     Key? key,
-    required this.isRecording,
-    required this.isPaused,
-    required this.hasStartedRecording,
+    required this.model,
     required this.onCancel,
-    required this.onRecordPause,
     required this.onSave,
   }) : super(key: key);
 
@@ -383,14 +228,19 @@ class CreatePlayerButtonsSection extends StatelessWidget {
     const double sideButtonSize = 64;
     const double centerButtonSize = 80;
 
+    // Uniform button style for delete and save
+    final Color sideButtonColor = colorScheme.surfaceVariant;
+    final Color sideButtonActiveColor = colorScheme.primaryContainer;
+    final Color sideButtonIconColor = colorScheme.onSurfaceVariant;
+    final Color sideButtonActiveIconColor = colorScheme.onPrimaryContainer;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 48, 16, 48),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment:
-            CrossAxisAlignment.end, // Align bottoms of all children
+        crossAxisAlignment: CrossAxisAlignment.end, // Align bottoms of all children
         children: [
-          // Cancel button with label - in a column for the label
+          // Delete button with label - in a column for the label
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -399,12 +249,12 @@ class CreatePlayerButtonsSection extends StatelessWidget {
                 height: sideButtonSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: colorScheme.errorContainer,
+                  color: sideButtonActiveColor,
                 ),
                 child: IconButton(
                   icon: Icon(
                     Icons.close,
-                    color: colorScheme.onErrorContainer,
+                    color: sideButtonIconColor,
                     size: 32,
                   ),
                   onPressed: onCancel,
@@ -421,37 +271,50 @@ class CreatePlayerButtonsSection extends StatelessWidget {
             ],
           ),
 
-          // We add padding to ensure bottom alignment with the other buttons
-          Padding(
-            padding: const EdgeInsets.only(
-              bottom: 24,
-            ), // 8px for text + 16px for spacing in columns
-            child: Container(
-              width: centerButtonSize,
-              height: centerButtonSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color:
-                    isRecording
-                        ? (isPaused ? colorScheme.primary : colorScheme.error)
-                        : colorScheme.primary,
-              ),
-              child: IconButton(
-                icon: Icon(
-                  // Show mic icon if not actively recording (initial state or paused)
-                  isPaused || !isRecording ? Icons.mic : Icons.pause,
-                  color:
-                      isRecording
-                          ? (isPaused
-                              ? colorScheme.onPrimary
-                              : colorScheme.onError)
-                          : colorScheme.onPrimary,
-                  size: 40,
+          // Center button with different states
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Container(
+                  width: centerButtonSize,
+                  height: centerButtonSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: model.isCompleted
+                        ? colorScheme.secondary
+                        : model.isRecording
+                            ? colorScheme.error
+                            : colorScheme.primary,
+                  ),
+                  child: IconButton(
+                    icon: _getCenterButtonIcon(model, colorScheme),
+                    onPressed: () async {
+                      if (model.isCompleted) {
+                        // Restart recording if completed
+                        await model.restartRecording(context);
+                      } else if (model.hasStartedRecording) {
+                        // Pause/resume if already started
+                        await model.pauseRecording();
+                      } else {
+                        // Start new recording
+                        await model.startRecording(context);
+                      }
+                    },
+                    padding: EdgeInsets.zero,
+                  ),
                 ),
-                onPressed: onRecordPause,
-                padding: EdgeInsets.zero,
               ),
-            ),
+              // Rerecord label for the refresh button
+              if (model.isCompleted)
+                Text(
+                  'Rerecord',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+            ],
           ),
 
           // Save button with label
@@ -463,21 +326,16 @@ class CreatePlayerButtonsSection extends StatelessWidget {
                 height: sideButtonSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color:
-                      hasStartedRecording
-                          ? colorScheme.primaryContainer
-                          : colorScheme
-                              .surfaceVariant, // Dimmed if not started recording
+                  color: model.hasStartedRecording
+                      ? sideButtonActiveColor
+                      : sideButtonColor,
                 ),
                 child: IconButton(
                   icon: Icon(
                     Icons.check,
-                    color:
-                        hasStartedRecording
-                            ? colorScheme.onPrimaryContainer
-                            : colorScheme.onSurfaceVariant.withOpacity(
-                              0.5,
-                            ), // Dimmed if not started recording
+                    color: model.hasStartedRecording
+                        ? sideButtonActiveIconColor
+                        : sideButtonIconColor.withOpacity(0.5),
                     size: 32,
                   ),
                   onPressed: onSave,
@@ -488,12 +346,9 @@ class CreatePlayerButtonsSection extends StatelessWidget {
               Text(
                 'Save',
                 style: textTheme.bodyMedium?.copyWith(
-                  color:
-                      hasStartedRecording
-                          ? colorScheme.onSurface
-                          : colorScheme.onSurfaceVariant.withOpacity(
-                            0.5,
-                          ), // Dimmed if not started recording
+                  color: model.hasStartedRecording
+                      ? colorScheme.onSurface
+                      : colorScheme.onSurfaceVariant.withOpacity(0.5),
                 ),
               ),
             ],
@@ -501,5 +356,38 @@ class CreatePlayerButtonsSection extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // Helper method to get the appropriate icon for the center button
+  Widget _getCenterButtonIcon(AudioRecordingViewModel model, ColorScheme colorScheme) {
+    if (model.isCompleted) {
+      // Show refresh icon for completed recordings
+      return Icon(
+        Icons.refresh,
+        color: colorScheme.onSecondary,
+        size: 40,
+      );
+    } else if (!model.hasStartedRecording) {
+      // Show mic icon for initial state (not started recording)
+      return Icon(
+        Icons.mic,
+        color: colorScheme.onPrimary,
+        size: 40,
+      );
+    } else if (model.isRecording) {
+      // Show pause icon while recording
+      return Icon(
+        Icons.pause,
+        color: colorScheme.onError,
+        size: 40,
+      );
+    } else {
+      // Show play icon when paused
+      return Icon(
+        Icons.play_arrow,
+        color: colorScheme.onPrimary,
+        size: 40,
+      );
+    }
   }
 }
