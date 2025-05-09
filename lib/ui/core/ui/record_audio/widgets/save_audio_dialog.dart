@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/record_audio/view_models/audio_recording_view_model.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -195,6 +196,13 @@ class _SaveAudioDialogState extends State<SaveAudioDialog> {
                               // Close dialog and potentially the entire flow
                               Navigator.pop(context);
                               Navigator.pop(context);
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AudioAnalysisDetailScreen(),
+                                ),
+                              );
                             },
                       child: const Text('Save'),
                     ),
