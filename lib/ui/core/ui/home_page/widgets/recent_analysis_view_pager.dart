@@ -1,64 +1,45 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_speech_recognition/ui/core/ui/home_page/view_models/carousel_view_model.dart';
+import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis_home_summary.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/home_page/view_models/home_view_model.dart';
 import 'package:flutter_carousel_widget/flutter_carousel_widget.dart';
 import 'package:mobile_speech_recognition/utils/date_time_utils.dart';
 
-class CarouselWithIndicator extends StatefulWidget {
+class RecentAnalysisViewPager extends StatefulWidget {
   final double viewportFraction;
   final double horizontalPadding;
-  final CarouselViewModel? viewModel; // Optional: can be provided from outside
-  final Function(CarouselItem)? onItemTap;
+  final HomeViewModel viewModel; // Optional: can be provided from outside
+  final Function(AudioAnalysisHomeSummary)? onItemTap;
   
-  const CarouselWithIndicator({
+  const RecentAnalysisViewPager({
     Key? key, 
     this.viewportFraction = 0.9,
     this.horizontalPadding = 16.0,
-    this.viewModel,
+    required this.viewModel,
     this.onItemTap,
   }) : super(key: key);
 
   @override
-  State<CarouselWithIndicator> createState() => _CarouselWithIndicatorState();
+  State<RecentAnalysisViewPager> createState() => _RecentAnalysisViewPagerState();
 }
 
-class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
-  late CarouselViewModel _viewModel;
+class _RecentAnalysisViewPagerState extends State<RecentAnalysisViewPager> {
   int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    // Use provided ViewModel or create a local one
-    _viewModel = widget.viewModel ?? CarouselViewModel();
-    
-    // If we're using a local ViewModel, load the data
-    if (widget.viewModel == null) {
-      _viewModel.loadItems();
-    }
   }
   
   @override
   void dispose() {
-    // Only dispose the ViewModel if we created it locally
-    if (widget.viewModel == null) {
-      _viewModel.dispose();
-    }
     super.dispose();
   }
   
   @override
-  void didUpdateWidget(CarouselWithIndicator oldWidget) {
+  void didUpdateWidget(RecentAnalysisViewPager oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
-    // If the ViewModel reference changes, update our local reference
-    if (widget.viewModel != null && widget.viewModel != oldWidget.viewModel) {
-      // Clean up the old ViewModel if we created it
-      if (oldWidget.viewModel == null) {
-        _viewModel.dispose();
-      }
-      
-      _viewModel = widget.viewModel!;
-    }
+   
+
   }
 
   @override
@@ -69,9 +50,9 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
     
     // Use AnimatedBuilder to listen to ViewModel changes
     return AnimatedBuilder(
-      animation: _viewModel,
+      animation: widget.viewModel,
       builder: (context, _) {
-        if (_viewModel.isLoading) {
+        if (widget.viewModel.isLoading) {
           return Center(
             child: CircularProgressIndicator(
               color: colorScheme.primary,
@@ -79,12 +60,12 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
           );
         }
         
-        if (_viewModel.hasError) {
+        if (widget.viewModel.hasError) {
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                'Error: ${_viewModel.error}',
+                'Error: ${widget.viewModel.error}',
                 style: TextStyle(color: colorScheme.error),
               ),
             ),
@@ -92,7 +73,7 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
         }
         
         // Handle empty state
-        if (_viewModel.isEmpty) {
+        if (widget.viewModel.isEmpty) {
           return Center(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: widget.horizontalPadding),
@@ -115,7 +96,7 @@ class _CarouselWithIndicatorState extends State<CarouselWithIndicator> {
         
         // If items count changed, we need to recreate the PageController
         // with the appropriate viewportFraction
-        final items = _viewModel.items;
+        final items = widget.viewModel.items;
       
         MediaQueryData mediaQuery = MediaQuery.of(context);
         double screenWidth = mediaQuery.size.width;

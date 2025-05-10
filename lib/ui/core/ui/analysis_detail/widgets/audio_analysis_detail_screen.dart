@@ -1,3 +1,4 @@
+// lib/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -5,9 +6,9 @@ import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/view_models
 import 'package:provider/provider.dart';
 
 class AudioAnalysisDetailScreen extends StatefulWidget {
-  final String? analysisId;
+  final int analysisId;
 
-  const AudioAnalysisDetailScreen({Key? key, this.analysisId})
+  const AudioAnalysisDetailScreen({Key? key, required this.analysisId})
     : super(key: key);
 
   @override
@@ -18,8 +19,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create:
-          (_) => AudioAnalysisDetailViewModel(analysisId: widget.analysisId),
+      create: (_) => AudioAnalysisDetailViewModel(context, analysisId: widget.analysisId),
       child: _AudioAnalysisDetailView(),
     );
   }
@@ -31,6 +31,24 @@ class _AudioAnalysisDetailView extends StatelessWidget {
     final viewModel = Provider.of<AudioAnalysisDetailViewModel>(context);
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+
+    // Show loading indicator if loading
+    if (viewModel.isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Analysis Detail'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: colorScheme.primary,
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -63,6 +81,23 @@ class _AudioAnalysisDetailView extends StatelessWidget {
 
               // Analysis Breakdown - Detailed
               _buildAnalysisBreakdownCard(context, colorScheme, textTheme, viewModel),
+              
+              // Show error if any
+              if (viewModel.error != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    viewModel.error!,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -164,9 +199,7 @@ class _AudioAnalysisDetailView extends StatelessWidget {
                           ),
                         ),
                         child: Slider(
-                          value:
-                              viewModel.currentPosition.inMilliseconds
-                                  .toDouble(),
+                          value: viewModel.currentPosition.inMilliseconds.toDouble(),
                           min: 0,
                           max: analysis.totalDuration.inMilliseconds.toDouble(),
                           activeColor: colorScheme.primary,
@@ -357,30 +390,6 @@ class _AudioAnalysisDetailView extends StatelessWidget {
     );
   }
 
-  IconData _getAgeGenderIcon(String key) {
-    if (key.contains('F')) {
-      return Icons.female;
-    } else if (key.contains('M')) {
-      return Icons.male;
-    } else if (key.contains('C')) {
-      return Icons.child_care;
-    }
-    return Icons.person;
-  }
-
-  IconData _getNationalityIcon(String key) {
-    switch (key) {
-      case 'IT':
-        return Icons.flag;
-      case 'FR':
-        return Icons.flag;
-      case 'EN':
-        return Icons.flag;
-      default:
-        return Icons.public;
-    }
-  }
-
   Widget _buildAnalysisBreakdownCard(
     BuildContext context,
     ColorScheme colorScheme,
@@ -452,19 +461,18 @@ class _AudioAnalysisDetailView extends StatelessWidget {
 
         // Display prediction values
         Row(
-          children:
-              predictions.entries.map((entry) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: Tooltip(
-                    message: tooltips[entry.key] ?? entry.key,
-                    child: Text(
-                      '${entry.key} (${entry.value.toInt()}%)',
-                      style: textTheme.bodyMedium,
-                    ),
-                  ),
-                );
-              }).toList(),
+          children: predictions.entries.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Tooltip(
+                message: tooltips[entry.key] ?? entry.key,
+                child: Text(
+                  '${entry.key} (${entry.value.toInt()}%)',
+                  style: textTheme.bodyMedium,
+                ),
+              ),
+            );
+          }).toList(),
         ),
 
         const SizedBox(height: 8),
@@ -508,19 +516,12 @@ class _AudioAnalysisDetailView extends StatelessWidget {
       bars.add(
         Container(
           height: 8,
-          width:
-              (MediaQuery.of(context).size.width - 64) *
-              percentage, // Full width minus padding
+          width: (MediaQuery.of(context).size.width - 64) * percentage, // Full width minus padding
           decoration: BoxDecoration(
-            color: colorScheme.primary.withOpacity(
-              0.5 + (0.5 * (1 - runningWidth)),
-            ), // Gradient effect
+            color: colorScheme.primary.withOpacity(0.5 + (0.5 * (1 - runningWidth))), // Gradient effect
             borderRadius: BorderRadius.horizontal(
               left: runningWidth == 0 ? const Radius.circular(4) : Radius.zero,
-              right:
-                  runningWidth + percentage >= 0.99
-                      ? const Radius.circular(4)
-                      : Radius.zero,
+              right: runningWidth + percentage >= 0.99 ? const Radius.circular(4) : Radius.zero,
             ),
           ),
         ),
@@ -530,5 +531,29 @@ class _AudioAnalysisDetailView extends StatelessWidget {
     });
 
     return bars;
+  }
+
+  IconData _getAgeGenderIcon(String key) {
+    if (key.contains('F')) {
+      return Icons.female;
+    } else if (key.contains('M')) {
+      return Icons.male;
+    } else if (key.contains('C')) {
+      return Icons.child_care;
+    }
+    return Icons.person;
+  }
+
+  IconData _getNationalityIcon(String key) {
+    switch (key) {
+      case 'IT':
+        return Icons.flag;
+      case 'FR':
+        return Icons.flag;
+      case 'EN':
+        return Icons.flag;
+      default:
+        return Icons.public;
+    }
   }
 }

@@ -191,7 +191,7 @@ class _SaveAudioDialogState extends State<SaveAudioDialog> {
                           ? null // Disable the button when title is empty
                           : () async {
                               // Call the save method on the ViewModel
-                              await model.saveRecording();
+                              var result = await model.saveRecording();
 
                               // Close dialog and potentially the entire flow
                               Navigator.pop(context);
@@ -200,7 +200,9 @@ class _SaveAudioDialogState extends State<SaveAudioDialog> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => AudioAnalysisDetailScreen(),
+                                  builder: (context) => AudioAnalysisDetailScreen(
+                                  analysisId: result?.id ?? -1,
+                                  ),
                                 ),
                               );
                             },

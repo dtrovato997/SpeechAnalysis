@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_speech_recognition/ui/core/ui/home_page/widgets/carousel_with_indicator.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/home_page/view_models/home_view_model.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/home_page/widgets/recent_analysis_view_pager.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/record_audio/widgets/record_audio_screen.dart';
 
 class HomePage extends StatefulWidget {
@@ -12,6 +13,13 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // Define a consistent horizontal padding value
   final double horizontalPadding = 16.0;
+  late HomeViewModel viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    viewModel = HomeViewModel(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +145,8 @@ class _HomePageState extends State<HomePage> {
 
         Padding(
           padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-          child: CarouselWithIndicator(
+          child: RecentAnalysisViewPager(
+            viewModel: viewModel,
             horizontalPadding: horizontalPadding,
             onItemTap: (item) {
               // Handle tap on carousel item

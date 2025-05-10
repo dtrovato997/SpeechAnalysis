@@ -1,4 +1,4 @@
-import 'package:mobile_speech_recognition/domain/models/tag.dart';
+import 'package:mobile_speech_recognition/domain/models/tag/tag.dart';
 
 class AudioAnalysis {
   final int? id;

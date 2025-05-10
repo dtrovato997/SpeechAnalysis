@@ -2,9 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
+import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 
 class AudioRecordingViewModel extends ChangeNotifier {
+
   // Controller for the waveform recording
   late RecorderController recorderController;
 
@@ -27,11 +30,12 @@ class AudioRecordingViewModel extends ChangeNotifier {
   static const int MAX_RECORDING_DURATION = 30; // 30 seconds max
 
   // Repository for saving analyses
-  final AudioAnalysisRepository _audioAnalysisRepository =
-      AudioAnalysisRepository();
+  final AudioAnalysisRepository _audioAnalysisRepository;
 
   // Constructor
-  AudioRecordingViewModel() {
+  AudioRecordingViewModel(BuildContext context) 
+    : _audioAnalysisRepository = Provider.of<AudioAnalysisRepository>(context, listen: false) {
+
     // Initialize recorder controller with default settings
     recorderController =
         RecorderController()
@@ -155,20 +159,20 @@ class AudioRecordingViewModel extends ChangeNotifier {
   }
 
   // Save recording - this will be called from the SaveAudioDialog
-  Future<void> saveRecording() async {
+  Future<AudioAnalysis?> saveRecording() async {
     try {
       if (recordedFilePath == null) {
         print('No recording to save');
-        return;
+        return null;
       }
 
       if (Title.isEmpty) {
         print('Title cant be empty');
-        return;
+        return null;
       }
 
       // Create a new audio analysis
-      await _audioAnalysisRepository.createAnalysis(
+      AudioAnalysis result = await _audioAnalysisRepository.createAnalysis(
         title:
             Title.isEmpty
                 ? 'Recording_${DateTime.now().millisecondsSinceEpoch}'
@@ -178,7 +182,10 @@ class AudioRecordingViewModel extends ChangeNotifier {
       );
       // Mark as completed
       _isCompleted = true;
+
       notifyListeners();
+
+      return result;
     } catch (e) {
       print('Error saving recording: $e');
       // TODO: Handle error appropriately

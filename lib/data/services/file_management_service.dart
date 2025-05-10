@@ -1,7 +1,7 @@
 // file_management_service_impl.dart
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:mobile_speech_recognition/domain/models/audio_analysis.dart';
+import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
 
 class FileManagementService {
   static final FileManagementService _instance = FileManagementService._internal();

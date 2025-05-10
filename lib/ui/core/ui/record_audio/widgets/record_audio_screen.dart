@@ -18,7 +18,7 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
   @override
   void initState() {
     super.initState();
-    viewModel = AudioRecordingViewModel();
+    viewModel = AudioRecordingViewModel(context);
   }
 
   @override

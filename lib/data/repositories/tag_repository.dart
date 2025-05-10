@@ -1,8 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/data/services/database_service.dart';
-import 'package:mobile_speech_recognition/domain/models/tag.dart';
+import 'package:mobile_speech_recognition/domain/models/tag/tag.dart';
 import 'package:sqflite/sqflite.dart';
 
-class TagRepository 
+class TagRepository extends ChangeNotifier
 {
     final DatabaseService _databaseService = DatabaseService();
 
@@ -13,6 +14,8 @@ class TagRepository
             tag.toMap(),
             conflictAlgorithm: ConflictAlgorithm.replace,
         );
+
+        notifyListeners();
     }
 
     Future<List<Tag>> getTagsByAnalysisId(int analysisId) async {
@@ -44,11 +47,15 @@ class TagRepository
             where: '_id = ?',
             whereArgs: [id],
         );
+
+        notifyListeners();
     }
 
     Future<void> deleteAllTags() async {
         final db = await _databaseService.database;
         await db.delete('tags');
+
+        notifyListeners();
     }
 
 

@@ -1,21 +1,33 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:device_preview/device_preview.dart';
+import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
+import 'package:mobile_speech_recognition/data/repositories/tag_repository.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/widgets/home_page_screen.dart';
 import 'package:mobile_speech_recognition/ui/core/themes/theme.dart';
 import 'package:mobile_speech_recognition/utils/util.dart';
 import 'package:mobile_speech_recognition/data/services/database_service.dart';
+import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 void main() async {
-  // This line is crucial - it ensures that platform channels are initialized
-
   await initializeApp();
 
   runApp(
-    DevicePreview(
-      enabled: true,
-      builder: (context) => const MyApp(), // Wrap your app
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AudioAnalysisRepository>(
+          create: (_) => AudioAnalysisRepository(),
+        ),
+
+        ChangeNotifierProvider<TagRepository>(
+          create: (_) => TagRepository(),
+        ),
+      ],
+      child: DevicePreview(
+        enabled: true,
+        builder: (context) => const MyApp(),
+      ),
     ),
   );
 }
