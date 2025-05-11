@@ -129,23 +129,12 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
                 fontSize: 16,
               ),
             ),
-            if (model.searchQuery.isEmpty) ...[
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.mic),
-                label: const Text('Record New Analysis'),
-                onPressed: () {
-                  // Navigate to recording screen
-                  // This should be implemented based on your navigation pattern
-                },
-              ),
-            ],
           ],
         ),
       );
     }
     
-    // Show list of analyses
+    // Show list of analyses with dismissible feature
     return RefreshIndicator(
       onRefresh: () => model.loadAnalyses(),
       color: colorScheme.primary,
@@ -154,21 +143,107 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
         itemCount: model.filteredAnalyses.length,
         itemBuilder: (context, index) {
           final analysis = model.filteredAnalyses[index];
-          return AnalysisCard(
-            analysis: analysis,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AudioAnalysisDetailScreen(
-                    analysisId: analysis.id!,
-                  ),
-                ),
-              );
-            },
+          return _buildDismissibleAnalysisCard(context, analysis, colorScheme);
+        },
+      ),
+    );
+  }
+  
+  Widget _buildDismissibleAnalysisCard(BuildContext context, AudioAnalysis analysis, ColorScheme colorScheme) {
+
+    return Dismissible(
+      key: Key('analysis-${analysis.id}'),
+      // Only allow dismissing from right to left (trailing to leading)
+      direction: DismissDirection.endToStart,
+      
+      // Confirmation will be shown before removing the item
+      confirmDismiss: (direction) async {
+        return await _showDeleteConfirmationDialog(context, analysis);
+      },
+      
+      // Handle the actual deletion when confirmed
+      onDismissed: (direction) async {
+        if (analysis.id != null) {
+          await viewModel.dismissAudioAnalysis(analysis.id!);
+          
+          // Show a snackbar with undo option
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Analysis "${analysis.title}" deleted'),
+              action: SnackBarAction(
+                label: 'Close',
+                onPressed: () {
+                  // This is a placeholder for undo functionality
+                  // In a real implementation, you would need to store the deleted item
+
+                },
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      },
+      
+      // Background shown when dismissing (with delete icon and color)
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20.0),
+        color: colorScheme.error,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.delete,
+              color: colorScheme.onError,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Delete',
+              style: TextStyle(
+                color: colorScheme.onError,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+      
+      // The actual card widget
+      child: AnalysisCard(
+        analysis: analysis,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AudioAnalysisDetailScreen(
+                analysisId: analysis.id!,
+              ),
+            ),
           );
         },
       ),
     );
+  }
+  
+  Future<bool> _showDeleteConfirmationDialog(BuildContext context, AudioAnalysis analysis) {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Analysis'),
+          content: Text('Are you sure you want to delete "${analysis.title}"?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    ).then((value) => value ?? false); // Default to false if dialog is dismissed
   }
 }

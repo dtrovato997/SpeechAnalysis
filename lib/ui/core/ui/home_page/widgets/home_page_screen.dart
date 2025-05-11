@@ -34,9 +34,10 @@ class _HomePageState extends State<HomePage> {
         title: Text(
           'Speech Analysis',
           style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
+          
           textAlign: TextAlign.left
         ),
-        backgroundColor: colorScheme.surface,
+        backgroundColor: colorScheme.background,
         elevation: 0,
         actions: [
           IconButton(
@@ -58,7 +59,7 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       
-      
+
       bottomNavigationBar: NavigationBar(
         backgroundColor: colorScheme.surface,
         indicatorColor: colorScheme.primaryContainer,

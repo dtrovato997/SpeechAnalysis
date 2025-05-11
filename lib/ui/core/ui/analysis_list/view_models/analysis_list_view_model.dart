@@ -21,7 +21,7 @@ class AnalysisListViewModel extends ChangeNotifier {
   
   // Error state
   String? _error;
-  
+
   // Getters
   List<AudioAnalysis> get analyses => _analyses;
   List<AudioAnalysis> get filteredAnalyses => _filteredAnalyses;
@@ -106,6 +106,10 @@ class AnalysisListViewModel extends ChangeNotifier {
     }
     
     notifyListeners();
+  }
+
+  Future<void> dismissAudioAnalysis(int? id) async {
+     await _audioAnalysisRepository.deleteAudioAnalysis(id!,doNotify: true);
   }
   
   // Update loading state

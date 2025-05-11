@@ -131,7 +131,7 @@ class AudioAnalysisRepository extends ChangeNotifier {
     return analyses;
   }
 
-  Future<void> deleteAudioAnalysis(int id) async {
+  Future<void> deleteAudioAnalysis(int id, {bool doNotify = true}) async {
     final db = await _databaseService.database;
 
     // Delete from database
@@ -144,6 +144,8 @@ class AudioAnalysisRepository extends ChangeNotifier {
     // Also delete the physical files
     await _fileManagementService.deleteRecording(id);
 
-    notifyListeners();
+    if(doNotify) {
+      notifyListeners();
+    }
   }
 }
