@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis_home_summary.dart';
+import 'package:mobile_speech_recognition/ui/core/analysis_card.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/view_models/home_view_model.dart';
 import 'package:flutter_carousel_widget/flutter_carousel_widget.dart';
 import 'package:mobile_speech_recognition/utils/date_time_utils.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
 
 class RecentAnalysisViewPager extends StatefulWidget {
   final double viewportFraction;
@@ -38,8 +40,6 @@ class _RecentAnalysisViewPagerState extends State<RecentAnalysisViewPager> {
   @override
   void didUpdateWidget(RecentAnalysisViewPager oldWidget) {
     super.didUpdateWidget(oldWidget);
-   
-
   }
 
   @override
@@ -112,73 +112,26 @@ class _RecentAnalysisViewPagerState extends State<RecentAnalysisViewPager> {
             viewportFraction: items.length == 1 ? 1.0 : (screenWidth > 600 ? 0.4 : 0.9),
           ),
           itemBuilder:(context, index, viewPageIndex) {
-            final item = items[index];                  
+            final analysis = items[index];                  
             return Padding(
               padding: const EdgeInsets.only(
                 right: 16.0, 
                 top: 8.0, 
                 bottom: 24.0,
               ),
-              child: GestureDetector(
-                onTap: () {
-                  if (widget.onItemTap != null) {
-                    widget.onItemTap!(item);
-                  }
-                },
-                child: Card(
-                  elevation: 1,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () {
-                      if (widget.onItemTap != null) {
-                        widget.onItemTap!(item);
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            item.title,
-                            style: textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (item.status != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4.0),
-                              child: Text(
-                                item.status!,
-                                style: textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                  color: _getStatusColor(item.status!, colorScheme),
-                                ),
-                              ),
-                            ),
-                          if (item.date != null)
-                            
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                DateTimeUtils.getRelativeTimeSpan(item.date!),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
+              child: AnalysisCard(
+            analysis: analysis,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AudioAnalysisDetailScreen(
+                    analysisId: analysis.id!,
                   ),
                 ),
-              ),
-            );
+              );
+            },
+          ));
           }
         );
       },
@@ -189,14 +142,13 @@ class _RecentAnalysisViewPagerState extends State<RecentAnalysisViewPager> {
   {
     switch (s) {
       case 'Pending':
-        return Colors.yellow.shade300;
+        return Colors.amber.shade600;
       case 'Completed':
-        return Colors.green.shade300;
+        return Colors.green.shade500;
       case 'Failed':
-        return Colors.red.shade300;
+        return Colors.red.shade400;
       default:
         return colorScheme.onSurfaceVariant;
     }
   }
-  
 }

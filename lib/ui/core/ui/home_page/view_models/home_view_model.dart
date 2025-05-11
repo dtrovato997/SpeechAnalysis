@@ -2,13 +2,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
+import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis_home_summary.dart';
 import 'package:provider/provider.dart';
 
 /// ViewModel for managing carousel data
 class HomeViewModel extends ChangeNotifier {
   final AudioAnalysisRepository _audioAnalysisRepository;
-  List<AudioAnalysisHomeSummary> _items = [];
+  List<AudioAnalysis> _items = [];
   bool _isLoading = false;
   String? _error;
 
@@ -23,7 +24,7 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   // Getters
-  List<AudioAnalysisHomeSummary> get items => _items;
+  List<AudioAnalysis> get items => _items;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasError => _error != null;
@@ -41,10 +42,8 @@ class HomeViewModel extends ChangeNotifier {
     
     try {
       // Fetch actual analyses from the repository
-      final analyses = await _audioAnalysisRepository.getRecentAnalyses(limit: 5);
+       _items = await _audioAnalysisRepository.getRecentAnalyses(limit: 5);
       
-      // Convert analyses to carousel items
-      _items = analyses.map((analysis) => AudioAnalysisHomeSummary.fromAudioAnalysis(analysis)).toList();
       _error = null;
     } catch (e) {
       _error = "Failed to load analyses: ${e.toString()}";
@@ -56,7 +55,7 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   // Add a new item
-  void addItem(AudioAnalysisHomeSummary item) {
+  void addItem(AudioAnalysis item) {
     _items.add(item);
     notifyListeners();
   }

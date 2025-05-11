@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/view_models/home_view_model.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/widgets/recent_analysis_view_pager.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/record_audio/widgets/record_audio_screen.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/analysis_list/widgets/analysis_list_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -14,6 +15,7 @@ class _HomePageState extends State<HomePage> {
   // Define a consistent horizontal padding value
   final double horizontalPadding = 16.0;
   late HomeViewModel viewModel;
+  int _currentIndex = 0;
 
   @override
   void initState() {
@@ -27,10 +29,10 @@ class _HomePageState extends State<HomePage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: _currentIndex == 0 ? AppBar(
         title: Text(
           'Speech Analysis',
-          style: TextStyle(color: colorScheme.primary,fontWeight: FontWeight.bold),
+          style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
           textAlign: TextAlign.left
         ),
         backgroundColor: colorScheme.surface,
@@ -43,48 +45,19 @@ class _HomePageState extends State<HomePage> {
             },
           ),
         ],
-      ),
+      ) : null, // No app bar for analysis list tab (it has its own)
       backgroundColor: colorScheme.background,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: IntrinsicHeight(
-                child: Column(
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    // Title
-                    buildTitleSection(),
-
-                    Expanded(
-                      flex: 1,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: _buildFixedHeightCards(),
-                      ),
-                    ),
-
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: createRecentAnalysisSection(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+      body: _getPage(_currentIndex),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
+        currentIndex: _currentIndex,
         backgroundColor: colorScheme.surface,
         selectedItemColor: colorScheme.primary,
         unselectedItemColor: colorScheme.onSurfaceVariant,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
@@ -93,6 +66,55 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
+    );
+  }
+  
+  Widget _getPage(int index) {
+    switch (index) {
+      case 0:
+        return _buildHomeContent();
+      case 1:
+        return const AnalysisListScreen();
+      default:
+        return _buildHomeContent();
+    }
+  }
+
+  Widget _buildHomeContent() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  // Title
+                  buildTitleSection(),
+
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: _buildFixedHeightCards(),
+                    ),
+                  ),
+
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: createRecentAnalysisSection(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -139,6 +161,18 @@ class _HomePageState extends State<HomePage> {
                 softWrap: true,
                 overflow: TextOverflow.visible,
               ),
+              TextButton(
+                onPressed: () {
+                  // Navigate to analysis list tab
+                  setState(() {
+                    _currentIndex = 1;
+                  });
+                },
+                child: Text(
+                  'View all',
+                  style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                ),
+              ),
             ],
           ),
         ),
@@ -150,6 +184,13 @@ class _HomePageState extends State<HomePage> {
             horizontalPadding: horizontalPadding,
             onItemTap: (item) {
               // Handle tap on carousel item
+              if (item.id != null) {
+                Navigator.pushNamed(
+                  context, 
+                  '/analysis-detail', 
+                  arguments: int.parse(item.id!)
+                );
+              }
             },
           ),
         ),
@@ -177,7 +218,6 @@ class _HomePageState extends State<HomePage> {
               ),
               child: InkWell(
                 onTap: () {
-
                   showModalBottomSheet(
                     constraints: BoxConstraints(
                       maxHeight: MediaQuery.of(context).size.height * 0.95,
