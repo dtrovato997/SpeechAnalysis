@@ -29,7 +29,8 @@ class _HomePageState extends State<HomePage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: _currentIndex == 0 ? AppBar(
+      // Only show the app bar on the home tab
+      appBar: AppBar(
         title: Text(
           'Speech Analysis',
           style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
@@ -45,39 +46,42 @@ class _HomePageState extends State<HomePage> {
             },
           ),
         ],
-      ) : null, // No app bar for analysis list tab (it has its own)
+      ),
       backgroundColor: colorScheme.background,
-      body: _getPage(_currentIndex),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
+      
+      // Use IndexedStack to preserve the state of each tab
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          _buildHomeContent(),
+          const AnalysisListScreen(),
+        ],
+      ),
+      
+      
+      bottomNavigationBar: NavigationBar(
         backgroundColor: colorScheme.surface,
-        selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurfaceVariant,
-        onTap: (index) {
+        indicatorColor: colorScheme.primaryContainer,
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) {
           setState(() {
             _currentIndex = index;
           });
         },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt_outlined),
+        destinations: [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined, color: colorScheme.onSurfaceVariant),
+            selectedIcon: Icon(Icons.home, color: colorScheme.onPrimaryContainer),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.list_alt_outlined, color: colorScheme.onSurfaceVariant),
+            selectedIcon: Icon(Icons.list_alt, color: colorScheme.onPrimaryContainer),
             label: 'Analysis',
           ),
         ],
       ),
     );
-  }
-  
-  Widget _getPage(int index) {
-    switch (index) {
-      case 0:
-        return _buildHomeContent();
-      case 1:
-        return const AnalysisListScreen();
-      default:
-        return _buildHomeContent();
-    }
   }
 
   Widget _buildHomeContent() {
@@ -127,13 +131,13 @@ class _HomePageState extends State<HomePage> {
         vertical: 14.0,
       ),
       child: Align(
-        alignment: Alignment.centerLeft, // This explicitly sets left alignment
+        alignment: Alignment.centerLeft,
         child: Text(
           'Start new analysis',
           style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           softWrap: true,
           overflow: TextOverflow.visible,
-          textAlign: TextAlign.left, // This also ensures text is left-aligned
+          textAlign: TextAlign.left,
         ),
       ),
     );
@@ -163,7 +167,7 @@ class _HomePageState extends State<HomePage> {
               ),
               TextButton(
                 onPressed: () {
-                  // Navigate to analysis list tab
+                  // Simply switch to the analysis tab
                   setState(() {
                     _currentIndex = 1;
                   });

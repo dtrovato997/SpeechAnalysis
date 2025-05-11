@@ -43,51 +43,37 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
       value: viewModel,
       child: Consumer<AnalysisListViewModel>(
         builder: (context, model, child) {
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(
-                'Analysis List',
-                style: TextStyle(
-                  color: colorScheme.primary, 
-                  fontWeight: FontWeight.bold
+          return Column(
+            children: [
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SearchBar(
+                  controller: _searchController,
+                  hintText: 'Search analyses...',
+                  onChanged: (value) {
+                    model.filterAnalyses(value);
+                  },
+                  leading: Icon(Icons.search, color: colorScheme.primary),
+                  trailing: [
+                    if (_searchController.text.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                        },
+                      ),
+                  ],
                 ),
               ),
-              backgroundColor: colorScheme.surface,
-              elevation: 0,
-            ),
-            backgroundColor: colorScheme.background,
-            body: Column(
-              children: [
-                // Search Bar
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: SearchBar(
-                    controller: _searchController,
-                    hintText: 'Search analyses...',
-                    onChanged: (value) {
-                      model.filterAnalyses(value);
-                    },
-                    leading: Icon(Icons.search, color: colorScheme.primary),
-                    trailing: [
-                      if (_searchController.text.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-                
-                // Analysis List or Loading/Error states
-                Expanded(
-                  child: _buildListContent(model, colorScheme),
-                ),
-              ],
-            ),
+              
+              // Analysis List or Loading/Error states
+              Expanded(
+                child: _buildListContent(model, colorScheme),
+              ),
+            ],
           );
-        },
+        }
       ),
     );
   }
