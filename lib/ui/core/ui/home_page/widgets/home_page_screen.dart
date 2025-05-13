@@ -37,7 +37,7 @@ class _HomePageState extends State<HomePage> {
           
           textAlign: TextAlign.left
         ),
-        backgroundColor: colorScheme.background,
+        backgroundColor: colorScheme.surfaceBright,
         elevation: 0,
         actions: [
           IconButton(
@@ -48,7 +48,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surfaceBright,
       
       // Use IndexedStack to preserve the state of each tab
       body: IndexedStack(
@@ -61,7 +61,7 @@ class _HomePageState extends State<HomePage> {
       
 
       bottomNavigationBar: NavigationBar(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: colorScheme.surfaceBright,
         indicatorColor: colorScheme.primaryContainer,
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {

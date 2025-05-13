@@ -16,93 +16,130 @@ class AudioAnalysisDetailScreen extends StatefulWidget {
 }
 
 class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
+  late AudioAnalysisDetailViewModel viewModel;
+
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AudioAnalysisDetailViewModel(context, analysisId: widget.analysisId),
-      child: _AudioAnalysisDetailView(),
+  void initState() {
+    super.initState();
+    viewModel = AudioAnalysisDetailViewModel(
+      context,
+      analysisId: widget.analysisId,
     );
   }
-}
 
-class _AudioAnalysisDetailView extends StatelessWidget {
+  @override
+  void dispose() {
+    viewModel.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final viewModel = Provider.of<AudioAnalysisDetailViewModel>(context);
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    // Show loading indicator if loading
-    if (viewModel.isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Analysis Detail'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: Center(
-          child: CircularProgressIndicator(
-            color: colorScheme.primary,
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analysis Detail'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Information Card
-              _buildInformationCard(context, colorScheme, textTheme, viewModel),
-
-              const SizedBox(height: 16),
-
-              // Recording Card
-              _buildRecordingCard(context, colorScheme, textTheme, viewModel),
-
-              const SizedBox(height: 16),
-
-              // Results Cards - Horizontally Stacked with fixed equal size
-              _buildResultsCardsFixed(context, colorScheme, textTheme, viewModel),
-
-              const SizedBox(height: 16),
-
-              // Analysis Breakdown - Detailed
-              _buildAnalysisBreakdownCard(context, colorScheme, textTheme, viewModel),
-              
-              // Show error if any
-              if (viewModel.error != null)
-                Container(
-                  margin: const EdgeInsets.only(top: 16),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(8),
+    return ChangeNotifierProvider.value(
+      value: viewModel,
+      child: Consumer<AudioAnalysisDetailViewModel>(
+        builder: (context, value, child) {
+          if (viewModel.isLoading) {
+            return Scaffold(
+              appBar: AppBar(
+                title: Text(
+                  'Analysis Detail',
+                  style: TextStyle(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: Text(
-                    viewModel.error!,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onErrorContainer,
-                    ),
-                  ),
+
+                  textAlign: TextAlign.left,
                 ),
-            ],
-          ),
-        ),
+
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              body: Center(
+                child: CircularProgressIndicator(color: colorScheme.primary),
+              ),
+            );
+          }
+
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(
+                'Analysis Detail',
+                style: TextStyle(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+
+                textAlign: TextAlign.left,
+              ),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            body: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Information Card
+                    _buildInformationCard(
+                      context,
+                      colorScheme,
+                      textTheme,
+                      viewModel,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Recording Card
+                    _buildRecordingCard(
+                      context,
+                      colorScheme,
+                      textTheme,
+                      viewModel,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Results Cards - Vertically Stacked
+                    _buildResultsCardsFixed(
+                      context,
+                      colorScheme,
+                      textTheme,
+                      viewModel,
+                    ),
+
+                    // Show error if any
+                    if (viewModel.error != null)
+                      Container(
+                        margin: const EdgeInsets.only(top: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          viewModel.error!,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onErrorContainer,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
-    );
+    ); // Show loading indicator if loading
   }
 
   Widget _buildInformationCard(
@@ -111,7 +148,7 @@ class _AudioAnalysisDetailView extends StatelessWidget {
     TextTheme textTheme,
     AudioAnalysisDetailViewModel viewModel,
   ) {
-    final analysis = viewModel.analysisDetails;
+    final analysis = viewModel.analysisDetail;
 
     return Card(
       elevation: 2,
@@ -129,7 +166,7 @@ class _AudioAnalysisDetailView extends StatelessWidget {
               ),
             ),
             Text(
-              viewModel.formatDate(analysis.date),
+              viewModel.formatDate(analysis!.creationDate),
               style: textTheme.titleSmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -137,7 +174,10 @@ class _AudioAnalysisDetailView extends StatelessWidget {
             const SizedBox(height: 8),
             Text(analysis.title, style: textTheme.titleLarge),
             const SizedBox(height: 8),
-            Text(analysis.description, style: textTheme.bodyMedium),
+            Text(
+              analysis.description ?? 'No description available',
+              style: textTheme.bodyMedium,
+            ),
           ],
         ),
       ),
@@ -150,7 +190,7 @@ class _AudioAnalysisDetailView extends StatelessWidget {
     TextTheme textTheme,
     AudioAnalysisDetailViewModel viewModel,
   ) {
-    final analysis = viewModel.analysisDetails;
+    final analysis = viewModel.analysisDetail;
 
     return Card(
       elevation: 2,
@@ -199,9 +239,13 @@ class _AudioAnalysisDetailView extends StatelessWidget {
                           ),
                         ),
                         child: Slider(
-                          value: viewModel.currentPosition.inMilliseconds.toDouble(),
+                          value:
+                              viewModel.currentPosition.inMilliseconds
+                                  .toDouble(),
                           min: 0,
-                          max: analysis.totalDuration.inMilliseconds.toDouble(),
+                          max:
+                              viewModel.recordingDuration.inMilliseconds
+                                  .toDouble(),
                           activeColor: colorScheme.primary,
                           inactiveColor: colorScheme.surfaceVariant,
                           onChanged: (value) {
@@ -223,7 +267,9 @@ class _AudioAnalysisDetailView extends StatelessWidget {
                               style: textTheme.bodySmall,
                             ),
                             Text(
-                              viewModel.formatDuration(analysis.totalDuration),
+                              viewModel.formatDuration(
+                                viewModel.recordingDuration,
+                              ),
                               style: textTheme.bodySmall,
                             ),
                           ],
@@ -246,74 +292,57 @@ class _AudioAnalysisDetailView extends StatelessWidget {
     TextTheme textTheme,
     AudioAnalysisDetailViewModel viewModel,
   ) {
-    final analysis = viewModel.analysisDetails;
-    
+    final analysis = viewModel.analysisDetail;
+
+    if (analysis?.sendStatus != 1) {
+      //Da sostituire con il loading
+      return const SizedBox.shrink();
+    }
     // Get the most likely age/gender and nationality
-    final ageGenderEntry = analysis.ageGenderPredictions.entries
-        .reduce((a, b) => a.value > b.value ? a : b);
-    final nationalityEntry = analysis.nationalityPredictions.entries
-        .reduce((a, b) => a.value > b.value ? a : b);
-        
-    // Get result text values
-    final ageGenderLabel = AudioAnalysisDetailViewModel.ageGenderLabels[ageGenderEntry.key] ?? ageGenderEntry.key;
-    final nationalityLabel = AudioAnalysisDetailViewModel.nationalityLabels[nationalityEntry.key] ?? nationalityEntry.key;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Analysis results',
-          style: textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        
-        // Use an IntrinsicHeight widget to ensure both cards have the same height
-        IntrinsicHeight(
-          child: Row(
-            children: [
-              // Age/Gender Card - Fixed width
-              Expanded(
-                child: _buildFixedResultCard(
-                  context: context,
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                  title: 'Età',
-                  confidence: ageGenderEntry.value,
-                  result: ageGenderLabel,
-                  icon: _getAgeGenderIcon(ageGenderEntry.key),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Nationality Card - Fixed width
-              Expanded(
-                child: _buildFixedResultCard(
-                  context: context,
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                  title: 'Nazionalità',
-                  confidence: nationalityEntry.value,
-                  result: nationalityLabel,
-                  icon: _getNationalityIcon(nationalityEntry.key),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+    final ageGenderEntry = analysis?.ageAndGenderResult?.entries.reduce(
+      (a, b) => a.value > b.value ? a : b,
     );
-  }
+    final nationalityEntry = analysis?.nationalityResult?.entries.reduce(
+      (a, b) => a.value > b.value ? a : b,
+    );
 
-  Widget _buildFixedResultCard({
-    required BuildContext context,
-    required ColorScheme colorScheme,
-    required TextTheme textTheme,
-    required String title,
-    required double confidence,
-    required String result,
-    required IconData icon,
-  }) {
+    if (ageGenderEntry == null || nationalityEntry == null) {
+      return const SizedBox.shrink(); // Return an empty widget if data is null
+    }
+
+    // Get result text values
+    final ageGenderLabel =
+        AudioAnalysisDetailViewModel.ageGenderLabels[ageGenderEntry.key] ??
+        ageGenderEntry.key;
+
+    // Determine if this is "Giovane donna" or other combinations
+    String localizedAgeGenderLabel = ageGenderLabel;
+    if (ageGenderEntry.key.contains('YF')) {
+      localizedAgeGenderLabel = 'Giovane donna';
+    } else if (ageGenderEntry.key.contains('YM')) {
+      localizedAgeGenderLabel = 'Giovane uomo';
+    } else if (ageGenderEntry.key.contains('F')) {
+      localizedAgeGenderLabel = 'Donna';
+    } else if (ageGenderEntry.key.contains('M')) {
+      localizedAgeGenderLabel = 'Uomo';
+    } else if (ageGenderEntry.key.contains('C')) {
+      localizedAgeGenderLabel = 'Bambino';
+    }
+
+    // Get nationality in Italian
+    final italianNationalityLabel =
+        nationalityEntry.key == 'IT'
+            ? 'Italiano'
+            : nationalityEntry.key == 'FR'
+            ? 'Francese'
+            : nationalityEntry.key == 'EN'
+            ? 'Inglese'
+            : nationalityEntry.key == 'ES'
+            ? 'Spagnolo'
+            : nationalityEntry.key == 'DE'
+            ? 'Tedesco'
+            : 'Sconosciuto';
+
     return Card(
       elevation: 2,
       color: colorScheme.surface,
@@ -321,7 +350,81 @@ class _AudioAnalysisDetailView extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisSize: MainAxisSize.max, // Fill available height
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Text(
+                'Analysis Result',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            // Stacked cards
+            Divider(),
+            Column(
+              children: [
+                // Age/Gender Card
+                _buildResultCard(
+                  context: context,
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                  title: 'Età',
+                  confidence: ageGenderEntry.value,
+                  result: localizedAgeGenderLabel,
+                  icon: _getAgeGenderIcon(ageGenderEntry.key),
+                  onLike: () => viewModel.setLikeStatus('AgeAndGender', 1),
+                  onDislike: () => viewModel.setLikeStatus('AgeAndGender', -1),
+                  isLiked: viewModel.getLikeStatus('AgeAndGender') == 1,
+                  isDisliked: viewModel.getLikeStatus('AgeAndGender') == -1,
+                ),
+                const SizedBox(height: 12),
+                // Nationality Card
+                _buildResultCard(
+                  context: context,
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                  title: 'Nazionalità',
+                  confidence: nationalityEntry.value,
+                  result: italianNationalityLabel,
+                  icon: Icons.public,
+                  onLike: () => viewModel.setLikeStatus('Nationality', 1),
+                  onDislike: () => viewModel.setLikeStatus('Nationality', -1),
+                  isLiked: viewModel.getLikeStatus('Nationality') == 1,
+                  isDisliked: viewModel.getLikeStatus('Nationality') == -1,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultCard({
+    required BuildContext context,
+    required ColorScheme colorScheme,
+    required TextTheme textTheme,
+    required String title,
+    required double confidence,
+    required String result,
+    required IconData icon,
+    required VoidCallback onLike,
+    required VoidCallback onDislike,
+    required bool isLiked,
+    required bool isDisliked,
+  }) {
+    return Card(
+      elevation: 0,
+      color: colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -336,38 +439,44 @@ class _AudioAnalysisDetailView extends StatelessWidget {
                 // Thumbs up/down icons
                 Row(
                   children: [
-                    Icon(
-                      Icons.thumb_up_outlined,
-                      size: 16,
-                      color: colorScheme.primary,
+                    GestureDetector(
+                      onTap: onLike,
+                      child: Icon(
+                        Icons.thumb_up_outlined,
+                        size: 16,
+                        color:
+                            isLiked
+                                ? colorScheme.primary
+                                : colorScheme.onSurfaceVariant.withOpacity(0.6),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Icon(
-                      Icons.thumb_down_outlined,
-                      size: 16,
-                      color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                    GestureDetector(
+                      onTap: onDislike,
+                      child: Icon(
+                        Icons.thumb_down_outlined,
+                        size: 16,
+                        color:
+                            isDisliked
+                                ? colorScheme.error
+                                : colorScheme.onSurfaceVariant.withOpacity(0.6),
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-            // Add spacer to push content to the top
-            const Spacer(flex: 1),
-            // Result content
+            const SizedBox(height: 12),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(
-                  icon,
-                  size: 24,
-                  color: colorScheme.primary,
-                ),
-                const SizedBox(width: 12),
+                Icon(icon, size: 18, color: colorScheme.primary),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     result,
                     style: textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.bold,
+                      color: colorScheme.primary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -375,162 +484,137 @@ class _AudioAnalysisDetailView extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Confidenza: ${confidence.toInt()}%',
-              style: textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  'Confidenza: ',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  '${(confidence * 100).toStringAsFixed(2)}%',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            // Add spacer to push content to the top and ensure equal height
-            const Spacer(flex: 3),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAnalysisBreakdownCard(
+  Widget _buildDetailedBreakdown(
     BuildContext context,
     ColorScheme colorScheme,
     TextTheme textTheme,
     AudioAnalysisDetailViewModel viewModel,
   ) {
-    final analysis = viewModel.analysisDetails;
+    final analysis = viewModel.analysisDetail;
+
+    // prepare label maps
+    final ageLabels = {
+      'YF': 'Giovane donna',
+      'YM': 'Giovane uomo',
+      'F': 'Donna',
+      'M': 'Uomo',
+      'C': 'Bambino/a',
+    };
+    final natLabels = {
+      'IT': 'Italiano',
+      'FR': 'Francese',
+      'EN': 'Inglese',
+      'ES': 'Spagnolo',
+      'DE': 'Tedesco',
+    };
 
     return Card(
       elevation: 2,
       color: colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Analysis breakdown',
+              'Breakdown dettagliato',
               style: textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // Age and Gender Predictions Card
-            _buildPredictionSection(
-              context: context,
+            // Età
+            /*_buildBreakdownSection(
+              title: 'Età',
+              data: viewModel.analysisDetail.ageGenderPredictions,
+              labels: ageLabels,
               colorScheme: colorScheme,
               textTheme: textTheme,
-              title: 'Age and Gender',
-              predictions: analysis.ageGenderPredictions,
-              tooltips: AudioAnalysisDetailViewModel.ageGenderLabels,
             ),
+            const SizedBox(height: 12),
 
-            const SizedBox(height: 24),
-
-            // Nationality Predictions Card
-            _buildPredictionSection(
-              context: context,
+            // Genere
+            _buildBreakdownSection(
+              title: 'Genere',
+              data: viewModel.analysisDetails.nationalityPredictions,
+              labels: natLabels,
               colorScheme: colorScheme,
               textTheme: textTheme,
-              title: 'Nationality',
-              predictions: analysis.nationalityPredictions,
-              tooltips: AudioAnalysisDetailViewModel.nationalityLabels,
-            ),
+            ),*/
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPredictionSection({
-    required BuildContext context,
+  Widget _buildBreakdownSection({
+    required String title,
+    required Map<String, double> data,
+    required Map<String, String> labels,
     required ColorScheme colorScheme,
     required TextTheme textTheme,
-    required String title,
-    required Map<String, double> predictions,
-    required Map<String, String> tooltips,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+          style: textTheme.titleSmall?.copyWith(color: colorScheme.primary),
         ),
         const SizedBox(height: 8),
-
-        // Display prediction values
-        Row(
-          children: predictions.entries.map((entry) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Tooltip(
-                message: tooltips[entry.key] ?? entry.key,
-                child: Text(
-                  '${entry.key} (${entry.value.toInt()}%)',
-                  style: textTheme.bodyMedium,
+        ...data.entries.map((e) {
+          final label = labels[e.key] ?? e.key;
+          final pct = (e.value * 100).toInt();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Text(label, style: textTheme.bodyMedium),
+                    const Spacer(),
+                    Text('$pct%', style: textTheme.bodyMedium),
+                  ],
                 ),
-              ),
-            );
-          }).toList(),
-        ),
-
-        const SizedBox(height: 8),
-
-        // Progress bars for predictions
-        Stack(
-          children: [
-            // Background bar
-            Container(
-              height: 8,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(4),
-              ),
+                const SizedBox(height: 4),
+                LinearProgressIndicator(
+                  value: e.value,
+                  minHeight: 6,
+                  color: colorScheme.primary,
+                  backgroundColor: colorScheme.surfaceVariant,
+                ),
+              ],
             ),
-
-            // Stacked prediction bars
-            Row(
-              children: _buildPredictionBars(context, predictions, colorScheme),
-            ),
-          ],
-        ),
+          );
+        }).toList(),
       ],
     );
-  }
-
-  List<Widget> _buildPredictionBars(
-    BuildContext context,
-    Map<String, double> predictions,
-    ColorScheme colorScheme,
-  ) {
-    double total = predictions.values.fold(0, (sum, value) => sum + value);
-
-    List<Widget> bars = [];
-    double runningWidth = 0;
-
-    predictions.forEach((key, value) {
-      double percentage = value / total;
-
-      bars.add(
-        Container(
-          height: 8,
-          width: (MediaQuery.of(context).size.width - 64) * percentage, // Full width minus padding
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withOpacity(0.5 + (0.5 * (1 - runningWidth))), // Gradient effect
-            borderRadius: BorderRadius.horizontal(
-              left: runningWidth == 0 ? const Radius.circular(4) : Radius.zero,
-              right: runningWidth + percentage >= 0.99 ? const Radius.circular(4) : Radius.zero,
-            ),
-          ),
-        ),
-      );
-
-      runningWidth += percentage;
-    });
-
-    return bars;
   }
 
   IconData _getAgeGenderIcon(String key) {
@@ -542,18 +626,5 @@ class _AudioAnalysisDetailView extends StatelessWidget {
       return Icons.child_care;
     }
     return Icons.person;
-  }
-
-  IconData _getNationalityIcon(String key) {
-    switch (key) {
-      case 'IT':
-        return Icons.flag;
-      case 'FR':
-        return Icons.flag;
-      case 'EN':
-        return Icons.flag;
-      default:
-        return Icons.public;
-    }
   }
 }

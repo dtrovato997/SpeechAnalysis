@@ -2,7 +2,7 @@
 
 class DatabaseConfig {
   static const String databaseName = 'SpeechAnalysis.db';
-  static const int databaseVersion = 1;
+  static const int databaseVersion = 2;
 
   // Table names
   static const String analysisTable = 'AudioAnalysis';
@@ -22,8 +22,7 @@ class DatabaseConfig {
       RECORDING_PATH TEXT NOT NULL,
       CREATION_DATE TEXT NOT NULL,
       COMPLETION_DATE TEXT,
-      AGE_RESULT TEXT,
-      GENDER_RESULT TEXT,
+      AGE_AND_GENDER_RESULT TEXT,
       NATIONALITY_RESULT TEXT,
       AGE_USER_FEEDBACK INTEGER,
       GENDER_USER_FEEDBACK INTEGER,
@@ -52,7 +51,7 @@ class DatabaseConfig {
   ];
 
 
-  ///int : version number
+  /// Migration scripts keyed by target version
   static final Map<int, List<String>> migrationScripts = {
   };
 }

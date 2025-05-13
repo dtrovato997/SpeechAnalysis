@@ -102,7 +102,7 @@ class AnalysisCard extends StatelessWidget {
                     _buildResultSection(
                       context: context,
                       label: 'Age and Gender',
-                      value: AnalysisFormatUtils.parseAgeGenderResult(analysis.ageResult),
+                      value: AnalysisFormatUtils.parseAgeGenderResult(analysis.ageAndGenderResult),
                       icon: Icons.person,
                       colorScheme: colorScheme,
                       textTheme: textTheme,

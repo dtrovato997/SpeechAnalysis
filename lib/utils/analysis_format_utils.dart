@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 
 /// Utility class for formatting analysis results across the app
 class AnalysisFormatUtils {
-  
   /// Maps for age and gender codes to display labels
   static const Map<String, String> ageGenderLabels = {
     'YF': 'Young Female',
@@ -13,7 +12,7 @@ class AnalysisFormatUtils {
     'C': 'Child',
     'Unknown': 'Unknown',
   };
-  
+
   /// Maps for nationality codes to display labels
   static const Map<String, String> nationalityLabels = {
     'IT': 'Italian',
@@ -23,7 +22,7 @@ class AnalysisFormatUtils {
     'DE': 'German',
     'Unknown': 'Unknown',
   };
-  
+
   /// Get display color for status
   static Color getStatusColor(String status, ColorScheme colorScheme) {
     switch (status.toLowerCase()) {
@@ -38,104 +37,40 @@ class AnalysisFormatUtils {
         return colorScheme?.onSurfaceVariant ?? Colors.grey;
     }
   }
-  
-  /// Parse age/gender result and return the most likely one
-  static String parseAgeGenderResult(String? ageResult) {
-    if (ageResult == null || ageResult.isEmpty) {
-      return '--';
-    }
-    
-    try {
-      // Parse age/gender result string like "YF:85,YM:10,C:5"
-      final Map<String, double> results = {};
-      final pairs = ageResult.split(',');
-      
-      for (final pair in pairs) {
-        final parts = pair.split(':');
-        if (parts.length == 2) {
-          final code = parts[0].trim();
-          final value = double.tryParse(parts[1].trim()) ?? 0.0;
-          results[code] = value;
-        }
-      }
-      
-      if (results.isEmpty) {
-        return '--';
-      }
-      
-      // Find the most likely result
-      final topEntry = results.entries.reduce((a, b) => a.value > b.value ? a : b);
-      return ageGenderLabels[topEntry.key] ?? topEntry.key;
-      
-    } catch (e) {
-      return '--';
-    }
+
+  /// Common helper to pick the top entry from a Map and map its key via [labels].
+  static String _parseTopFromMap(
+    Map<String, double>? results,
+    Map<String, String> labels,
+  ) {
+    if (results == null || results.isEmpty) return '--';
+
+    // Find the Map entry with the maximum value
+    final topEntry = results.entries.reduce(
+      (a, b) => a.value >= b.value ? a : b,
+    );
+
+    // Return mapped label or raw key
+    return labels[topEntry.key] ?? topEntry.key + topEntry.value.toStringAsFixed(2);
   }
-  
-  /// Parse nationality result and return the most likely one
-  static String parseNationalityResult(String? nationalityResult) {
-    if (nationalityResult == null || nationalityResult.isEmpty) {
-      return '--';
-    }
-    
-    try {
-      // Parse nationality result string like "IT:80,FR:12,EN:8"
-      final Map<String, double> results = {};
-      final pairs = nationalityResult.split(',');
-      
-      for (final pair in pairs) {
-        final parts = pair.split(':');
-        if (parts.length == 2) {
-          final code = parts[0].trim();
-          final value = double.tryParse(parts[1].trim()) ?? 0.0;
-          results[code] = value;
-        }
-      }
-      
-      if (results.isEmpty) {
-        return '--';
-      }
-      
-      // Find the most likely result
-      final topEntry = results.entries.reduce((a, b) => a.value > b.value ? a : b);
-      return nationalityLabels[topEntry.key] ?? topEntry.key;
-      
-    } catch (e) {
-      return '--';
-    }
+
+  /// Parse age/gender result map and return the most likely one
+  /// e.g. { 'YF': 85.0, 'YM': 15.0 } → 'Young Female'
+  static String parseAgeGenderResult(Map<String, double>? ageResult) {
+    return _parseTopFromMap(ageResult, ageGenderLabels);
   }
-  
-  /// Parse result string into a map of code:value
-  static Map<String, double> parseResultString(String? resultString) {
-    final Map<String, double> results = {};
-    
-    if (resultString == null || resultString.isEmpty) {
-      return results;
-    }
-    
-    try {
-      final pairs = resultString.split(',');
-      
-      for (final pair in pairs) {
-        final parts = pair.split(':');
-        if (parts.length == 2) {
-          final code = parts[0].trim();
-          final value = double.tryParse(parts[1].trim()) ?? 0.0;
-          results[code] = value;
-        }
-      }
-    } catch (e) {
-      // Return empty map on error
-    }
-    
-    return results;
+
+  /// Parse nationality result map and return the most likely one
+  /// e.g. { 'IT': 80.0, 'FR': 12.0 } → 'Italy'
+  static String parseNationalityResult(Map<String, double>? natResult) {
+    return _parseTopFromMap(natResult, nationalityLabels);
   }
-  
+
   /// Format date in a user-friendly way
   static String formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inDays < 1) {
       // Today, show time
       return 'Today, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
@@ -144,7 +79,15 @@ class AnalysisFormatUtils {
       return 'Yesterday';
     } else if (difference.inDays < 7) {
       // Within a week
-      const List<String> weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const List<String> weekdays = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
       final weekday = weekdays[date.weekday - 1];
       return weekday;
     } else {
@@ -152,13 +95,26 @@ class AnalysisFormatUtils {
       return '${date.day} ${getMonthName(date.month)} ${date.year}';
     }
   }
-  
+
   /// Get month name abbreviation from month number (1-12)
   static String getMonthName(int month) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return months[(month - 1).clamp(0, 11)];
   }
-  
+
   /// Get icon for age/gender code
   static IconData getAgeGenderIcon(String code) {
     if (code.contains('F')) {
@@ -170,12 +126,12 @@ class AnalysisFormatUtils {
     }
     return Icons.person;
   }
-  
+
   /// Get icon for nationality code
   static IconData getNationalityIcon(String code) {
     return Icons.public;
   }
-  
+
   /// Convert sendStatus code to display string
   static String getStatusText(int sendStatus) {
     switch (sendStatus) {

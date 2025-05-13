@@ -9,9 +9,8 @@ class AudioAnalysis {
   final String recordingPath;
   final DateTime creationDate;
   final DateTime? completionDate;
-  final String? ageResult;
-  final String? genderResult;
-  final String? nationalityResult;
+  final Map<String,double>? ageAndGenderResult;
+  final Map<String,double>? nationalityResult;
   final bool? ageFeedback;
   final bool? genderFeedback;
   final bool? nationalityFeedback;
@@ -27,8 +26,7 @@ class AudioAnalysis {
     required this.recordingPath,
     required this.creationDate,
     this.completionDate,
-    this.ageResult,
-    this.genderResult,
+    this.ageAndGenderResult,
     this.nationalityResult,
     this.ageFeedback,
     this.genderFeedback,
@@ -37,25 +35,26 @@ class AudioAnalysis {
 
   // Factory method to create Analysis from a Map
   // Note: This doesn't load tags - they need to be loaded separately
+  /// Factory: parse those two columns into Maps
   factory AudioAnalysis.fromMap(Map<String, dynamic> map) {
     return AudioAnalysis(
-      id: map['_id'],
-      title: map['TITLE'],
-      description: map['DESCRIPTION'],
-      sendStatus: map['SEND_STATUS'],
-      errorMessage: map['ERROR_MESSAGE'],
-      recordingPath: map['RECORDING_PATH'],
-      creationDate: DateTime.parse(map['CREATION_DATE']),
-      completionDate: map['COMPLETION_DATE'] != null 
-          ? DateTime.parse(map['COMPLETION_DATE']) 
+      id: map['_id'] as int?,
+      title: map['TITLE'] as String,
+      description: map['DESCRIPTION'] as String?,
+      sendStatus: map['SEND_STATUS'] as int,
+      errorMessage: map['ERROR_MESSAGE'] as String?,
+      recordingPath: map['RECORDING_PATH'] as String,
+      creationDate: DateTime.parse(map['CREATION_DATE'] as String),
+      completionDate: map['COMPLETION_DATE'] != null
+          ? DateTime.parse(map['COMPLETION_DATE'] as String)
           : null,
-      ageResult: map['AGE_RESULT'],
-      genderResult: map['GENDER_RESULT'],
-      nationalityResult: map['NATIONALITY_RESULT'],
+      ageAndGenderResult:
+          _stringToMap(map['AGE_AND_GENDER_RESULT'] as String?),
+      nationalityResult:
+          _stringToMap(map['NATIONALITY_RESULT'] as String?),
       ageFeedback: map['AGE_USER_FEEDBACK'] == 1,
       genderFeedback: map['GENDER_USER_FEEDBACK'] == 1,
       nationalityFeedback: map['NATIONALITY_USER_FEEDBACK'] == 1,
-      // Tags are loaded separately, so set to null here
       tags: null,
     );
   }
@@ -72,12 +71,13 @@ class AudioAnalysis {
       'RECORDING_PATH': recordingPath,
       'CREATION_DATE': creationDate.toIso8601String(),
       'COMPLETION_DATE': completionDate?.toIso8601String(),
-      'AGE_RESULT': ageResult,
-      'GENDER_RESULT': genderResult,
-      'NATIONALITY_RESULT': nationalityResult,
+      'AGE_AND_GENDER_RESULT': _mapToString(ageAndGenderResult),
+      'NATIONALITY_RESULT': _mapToString(nationalityResult),
       'AGE_USER_FEEDBACK': ageFeedback != null ? (ageFeedback! ? 1 : 0) : null,
-      'GENDER_USER_FEEDBACK': genderFeedback != null ? (genderFeedback! ? 1 : 0) : null,
-      'NATIONALITY_USER_FEEDBACK': nationalityFeedback != null ? (nationalityFeedback! ? 1 : 0) : null
+      'GENDER_USER_FEEDBACK':
+          genderFeedback != null ? (genderFeedback! ? 1 : 0) : null,
+      'NATIONALITY_USER_FEEDBACK':
+          nationalityFeedback != null ? (nationalityFeedback! ? 1 : 0) : null,
     };
   }
 
@@ -92,9 +92,8 @@ class AudioAnalysis {
     String? recordingPath,
     DateTime? creationDate,
     DateTime? completionDate,
-    String? ageResult,
-    String? genderResult,
-    String? nationalityResult,
+    Map<String,double>? ageAndGenderResult,
+    Map<String,double>? nationalityResult,
     bool? ageFeedback,
     bool? genderFeedback,
     bool? nationalityFeedback
@@ -109,12 +108,44 @@ class AudioAnalysis {
       recordingPath: recordingPath ?? this.recordingPath,
       creationDate: creationDate ?? this.creationDate,
       completionDate: completionDate ?? this.completionDate,
-      ageResult: ageResult ?? this.ageResult,
-      genderResult: genderResult ?? this.genderResult,
+      ageAndGenderResult: ageAndGenderResult ?? this.ageAndGenderResult,
       nationalityResult: nationalityResult ?? this.nationalityResult,
       ageFeedback: ageFeedback ?? this.ageFeedback,
       genderFeedback: genderFeedback ?? this.genderFeedback,
       nationalityFeedback: nationalityFeedback ?? this.nationalityFeedback
     );
+  }
+
+    /// Turn a string like "[YF:0.98,OF:0.1,CF:0.1]" into a Map.
+  static Map<String, double>? _stringToMap(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    if (trimmed.length < 2 ||
+        !trimmed.startsWith('[') ||
+        !trimmed.endsWith(']')) {
+      return null;
+    }
+    final body = trimmed.substring(1, trimmed.length - 1);
+    if (body.isEmpty) return <String, double>{};
+    final map = <String, double>{};
+    for (final pair in body.split(',')) {
+      final parts = pair.split(':');
+      if (parts.length != 2) continue;
+      final key = parts[0].trim();
+      final value = double.tryParse(parts[1].trim());
+      if (value != null) {
+        map[key] = value;
+      }
+    }
+    return map;
+  }
+
+  /// Turn a Map into a string like "[K1:V1,K2:V2]".
+  static String? _mapToString(Map<String, double>? map) {
+    if (map == null) return null;
+    final entries = map.entries
+        .map((e) => '${e.key}:${e.value}')
+        .join(',');
+    return '[$entries]';
   }
 }
