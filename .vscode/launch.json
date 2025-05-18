@@ -5,22 +5,45 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Debugger: Flask",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "flask",
+            "env": {
+                "FLASK_APP": "app.py",
+                "FLASK_DEBUG": "1"
+            },
+            "args": [
+                "run",
+                "--no-debugger",
+                "--no-reload"
+            ],
+            "jinja": true,
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/backend"
+        },
+        {
             "name": "Branch_MobileSpeechRecognition",
             "request": "launch",
             "type": "dart",
-            "args": ["-v"]
+            "args": [
+                "-v"
+            ],
+            "cwd": "${workspaceFolder}/flutter_app"
         },
         {
             "name": "Branch_MobileSpeechRecognition (profile mode)",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "profile"
+            "flutterMode": "profile",
+            "cwd": "${workspaceFolder}/flutter_app"
         },
         {
             "name": "Branch_MobileSpeechRecognition (release mode)",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "release"
+            "flutterMode": "release",
+            "cwd": "${workspaceFolder}/flutter_app"
         }
     ]
 }
