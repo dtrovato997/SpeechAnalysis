@@ -54,9 +54,11 @@ backend/instance/
 backend/.env
 
 # ML Models (usually large files)
-backend/models/*.h5
-backend/models/*.pkl
-backend/models/*.joblib
+backend/models/
+
+#Backend file directories and caches
+backend/uploads/
+backend/cache/
 
 # OS generated files
 Thumbs.db
