@@ -53,10 +53,7 @@ backend/.pytest_cache/
 backend/instance/
 backend/.env
 
-# ML Models (usually large files)
-backend/models/
-
-#Backend file directories and caches
+#Backend file directories and ML model cache
 backend/uploads/
 backend/cache/
 

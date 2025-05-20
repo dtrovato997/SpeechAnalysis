@@ -5,3 +5,7 @@ librosa
 numpy
 werkzeug
 audeer
+torch
+transformers
+torchaudio
+datasets
