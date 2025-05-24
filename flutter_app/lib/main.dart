@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
 import 'package:mobile_speech_recognition/data/repositories/tag_repository.dart';
+import 'package:mobile_speech_recognition/services/exception_handler_service.dart';
+import 'package:mobile_speech_recognition/services/logger_service.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/widgets/home_page_screen.dart';
 import 'package:mobile_speech_recognition/ui/core/themes/theme.dart';
 import 'package:mobile_speech_recognition/utils/util.dart';
@@ -33,18 +35,34 @@ void main() async {
 }
 
 Future<void> initializeApp() async {
-  // Ensure Flutter binding is initialized
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize database
+  final logger = LoggerService();
+  
   try {
-    final dbService = DatabaseService();
-    await dbService.database;
-  } catch (e) {
-    print('Error initializing database: $e');
-  }
+    // Ensure Flutter binding is initialized
+    WidgetsFlutterBinding.ensureInitialized();
 
-  print('App initialization completed');
+    // Initialize logger first
+    await logger.initialize();
+    logger.info('🚀 Starting Speech Recognition App');
+
+    // Initialize global exception handler
+    GlobalExceptionHandler().initialize();
+
+    // Initialize database
+    try {
+      final dbService = DatabaseService();
+      await dbService.database;
+      logger.info('✅ Database initialized successfully');
+    } catch (e, stackTrace) {
+      logger.error('❌ Error initializing database', e, stackTrace);
+      rethrow; // Critical error - app cannot function without database
+    }
+
+    logger.info('✅ App initialization completed successfully');
+  } catch (e, stackTrace) {
+    logger.fatal('💥 Critical error during app initialization', e, stackTrace);
+    rethrow;
+  }
 }
 
 class MyApp extends StatelessWidget {
