@@ -42,7 +42,8 @@ class AudioRecordingViewModel extends ChangeNotifier {
           ..androidEncoder = AndroidEncoder.aac
           ..androidOutputFormat = AndroidOutputFormat.mpeg4
           ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
-          ..sampleRate = 44100;
+          ..sampleRate = 16000// 16kHz sample rate;
+          ..bitRate = 256000; // 256 kbps bitrate
 
     // Set up timer
     remainingSeconds = MAX_RECORDING_DURATION;
@@ -66,7 +67,7 @@ class AudioRecordingViewModel extends ChangeNotifier {
     try {
       // Get temporary directory for recording
       final tempDir = await getTemporaryDirectory();
-      final filePath = '${tempDir.path}/temp_recording.aac';
+      final filePath = '${tempDir.path}/temp_recording.m4a';
 
       // Start recording
       await recorderController.record(path: filePath);
@@ -161,6 +162,11 @@ class AudioRecordingViewModel extends ChangeNotifier {
   // Save recording - this will be called from the SaveAudioDialog
   Future<AudioAnalysis?> saveRecording() async {
     try {
+      await recorderController.stop();
+      _isRecording = false;
+      _isPaused = false;
+      _isCompleted = true;
+
       if (recordedFilePath == null) {
         print('No recording to save');
         return null;
@@ -180,8 +186,6 @@ class AudioRecordingViewModel extends ChangeNotifier {
         description: Description,
         recordingPath: recordedFilePath!,
       );
-      // Mark as completed
-      _isCompleted = true;
 
       notifyListeners();
 
