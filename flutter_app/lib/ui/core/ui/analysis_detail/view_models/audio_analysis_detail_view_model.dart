@@ -1,6 +1,4 @@
 // lib/ui/core/ui/analysis_detail/view_models/audio_analysis_detail_view_model.dart
-import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
@@ -31,8 +29,7 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
 
   // Analysis data
   AudioAnalysis? _analysisDetail;
-
-  AudioAnalysis? get analysisDetail => _analysisDetail ?? _analysisDetail;
+  AudioAnalysis? get analysisDetail => _analysisDetail;
 
   // Loading state
   bool _isLoading = false;
@@ -43,22 +40,10 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
   String? get error => _error;
   bool get hasError => _error != null;
 
-  // Audio playback state
-  bool _isPlaying = false;
-  bool get isPlaying => _isPlaying;
-
-  Duration _recordingDuration = Duration.zero;
-  Duration _currentPosition = Duration.zero;
-
-  Duration get currentPosition => _currentPosition;
-  Duration get recordingDuration => _currentPosition;
-
-  Timer? _playbackTimer;
-
-  // Analysis ID if loading from a backend
+  // Analysis ID
   final int? _analysisId;
 
-  // Add properties to store like/dislike status
+  // Like/dislike status
   Map<String, int> _likeStatus = {'AgeAndGender': 0, 'Nationality': 0};
 
   // Get like status (1 = like, -1 = dislike, 0 = neutral)
@@ -114,10 +99,7 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
 
       if (analysis != null) {
         _error = null;
-
-        //Test duration
         _analysisDetail = analysis;
-        _recordingDuration = Duration(seconds: 30);
       } else {
         _error = "Analysis not found";
       }
@@ -135,50 +117,7 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
     notifyListeners();
   }
 
-  // Audio playback controls
-  void togglePlayback() {
-    _isPlaying = !_isPlaying;
-
-    if (_isPlaying) {
-      // Start a timer to simulate audio playback progress
-      _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (
-        timer,
-      ) {
-        if (_currentPosition < _recordingDuration) {
-          _currentPosition += const Duration(milliseconds: 100);
-          notifyListeners();
-        } else {
-          stopPlayback();
-        }
-      });
-    } else {
-      _playbackTimer?.cancel();
-    }
-
-    notifyListeners();
-  }
-
-  void stopPlayback() {
-    _isPlaying = false;
-    _playbackTimer?.cancel();
-    notifyListeners();
-  }
-
-  void seekTo(Duration position) {
-    if (position <= _recordingDuration) {
-      _currentPosition = position;
-      notifyListeners();
-    }
-  }
-
   // Format utilities
-  String formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "$twoDigitMinutes:$twoDigitSeconds";
-  }
-
   String formatDate(DateTime date) {
     return '${date.day} ${_getMonthName(date.month)} ${date.year}, ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
@@ -205,10 +144,6 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
   void dispose() {
     // Remove repository listener
     _audioAnalysisRepository.removeListener(_onRepositoryChanged);
-
-    // Cancel playback timer
-    _playbackTimer?.cancel();
-
     super.dispose();
   }
 }

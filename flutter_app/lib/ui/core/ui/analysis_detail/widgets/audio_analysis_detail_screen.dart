@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/view_models/audio_analysis_detail_view_model.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_player_widget.dart';
 import 'package:provider/provider.dart';
 
 class AudioAnalysisDetailScreen extends StatefulWidget {
@@ -51,10 +52,8 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                     color: colorScheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
-
                   textAlign: TextAlign.left,
                 ),
-
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back),
                   onPressed: () => Navigator.pop(context),
@@ -74,7 +73,6 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                   color: colorScheme.primary,
                   fontWeight: FontWeight.bold,
                 ),
-
                 textAlign: TextAlign.left,
               ),
               leading: IconButton(
@@ -139,7 +137,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
           );
         },
       ),
-    ); // Show loading indicator if loading
+    );
   }
 
   Widget _buildInformationCard(
@@ -190,99 +188,14 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     TextTheme textTheme,
     AudioAnalysisDetailViewModel viewModel,
   ) {
-    final analysis = viewModel.analysisDetail;
+    if (viewModel.analysisDetail == null) {
+      return const SizedBox.shrink();
+    }
 
-    return Card(
-      elevation: 2,
-      color: colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Audio recording',
-              style: textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                // Play Button
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: Icon(
-                      viewModel.isPlaying ? Icons.pause : Icons.play_arrow,
-                      color: colorScheme.onPrimary,
-                    ),
-                    onPressed: viewModel.togglePlayback,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Progress and time indicators
-                Expanded(
-                  child: Column(
-                    children: [
-                      SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          trackHeight: 4,
-                          thumbShape: const RoundSliderThumbShape(
-                            enabledThumbRadius: 8,
-                          ),
-                        ),
-                        child: Slider(
-                          value:
-                              viewModel.currentPosition.inMilliseconds
-                                  .toDouble(),
-                          min: 0,
-                          max:
-                              viewModel.recordingDuration.inMilliseconds
-                                  .toDouble(),
-                          activeColor: colorScheme.primary,
-                          inactiveColor: colorScheme.surfaceVariant,
-                          onChanged: (value) {
-                            viewModel.seekTo(
-                              Duration(milliseconds: value.toInt()),
-                            );
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              viewModel.formatDuration(
-                                viewModel.currentPosition,
-                              ),
-                              style: textTheme.bodySmall,
-                            ),
-                            Text(
-                              viewModel.formatDuration(
-                                viewModel.recordingDuration,
-                              ),
-                              style: textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+    return AudioPlayerWidget(
+      audioPath: viewModel.analysisDetail!.recordingPath,
+      colorScheme: colorScheme,
+      textTheme: textTheme,
     );
   }
 
@@ -295,9 +208,46 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     final analysis = viewModel.analysisDetail;
 
     if (analysis?.sendStatus != 1) {
-      //Da sostituire con il loading
-      return const SizedBox.shrink();
+      // Show loading or pending state
+      return Card(
+        elevation: 2,
+        color: colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Analysis Result',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: colorScheme.primary,
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    analysis?.sendStatus == 0 
+                        ? 'Analysis in progress...' 
+                        : analysis?.sendStatus == 2 
+                            ? 'Analysis failed' 
+                            : 'Processing...',
+                    style: textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
     }
+
     // Get the most likely age/gender and nationality
     final ageGenderEntry = analysis?.ageAndGenderResult?.entries.reduce(
       (a, b) => a.value > b.value ? a : b,
@@ -307,7 +257,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     );
 
     if (ageGenderEntry == null || nationalityEntry == null) {
-      return const SizedBox.shrink(); // Return an empty widget if data is null
+      return const SizedBox.shrink();
     }
 
     // Get result text values
@@ -505,115 +455,6 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildDetailedBreakdown(
-    BuildContext context,
-    ColorScheme colorScheme,
-    TextTheme textTheme,
-    AudioAnalysisDetailViewModel viewModel,
-  ) {
-    final analysis = viewModel.analysisDetail;
-
-    // prepare label maps
-    final ageLabels = {
-      'YF': 'Giovane donna',
-      'YM': 'Giovane uomo',
-      'F': 'Donna',
-      'M': 'Uomo',
-      'C': 'Bambino/a',
-    };
-    final natLabels = {
-      'IT': 'Italiano',
-      'FR': 'Francese',
-      'EN': 'Inglese',
-      'ES': 'Spagnolo',
-      'DE': 'Tedesco',
-    };
-
-    return Card(
-      elevation: 2,
-      color: colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Breakdown dettagliato',
-              style: textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Età
-            /*_buildBreakdownSection(
-              title: 'Età',
-              data: viewModel.analysisDetail.ageGenderPredictions,
-              labels: ageLabels,
-              colorScheme: colorScheme,
-              textTheme: textTheme,
-            ),
-            const SizedBox(height: 12),
-
-            // Genere
-            _buildBreakdownSection(
-              title: 'Genere',
-              data: viewModel.analysisDetails.nationalityPredictions,
-              labels: natLabels,
-              colorScheme: colorScheme,
-              textTheme: textTheme,
-            ),*/
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBreakdownSection({
-    required String title,
-    required Map<String, double> data,
-    required Map<String, String> labels,
-    required ColorScheme colorScheme,
-    required TextTheme textTheme,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: textTheme.titleSmall?.copyWith(color: colorScheme.primary),
-        ),
-        const SizedBox(height: 8),
-        ...data.entries.map((e) {
-          final label = labels[e.key] ?? e.key;
-          final pct = (e.value * 100).toInt();
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Text(label, style: textTheme.bodyMedium),
-                    const Spacer(),
-                    Text('$pct%', style: textTheme.bodyMedium),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                LinearProgressIndicator(
-                  value: e.value,
-                  minHeight: 6,
-                  color: colorScheme.primary,
-                  backgroundColor: colorScheme.surfaceVariant,
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ],
     );
   }
 
