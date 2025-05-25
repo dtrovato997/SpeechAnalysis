@@ -1,4 +1,4 @@
-// lib/ui/core/ui/shared/widgets/analysis_card.dart
+// lib/ui/core/analysis_card.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
@@ -95,29 +95,54 @@ class AnalysisCard extends StatelessWidget {
                 const Divider(),
                 const SizedBox(height: 8),
                 
-                // Analysis data: age, gender and nationality section
-                Row(
+                // Analysis data: age, gender and nationality sections
+                Column(
                   children: [
-                    // Age and Gender section
-                    _buildResultSection(
-                      context: context,
-                      label: 'Age and Gender',
-                      value: AnalysisFormatUtils.parseAgeGenderResult(analysis.ageAndGenderResult),
-                      icon: Icons.person,
-                      colorScheme: colorScheme,
-                      textTheme: textTheme,
+                    // First row: Age and Gender
+                    Row(
+                      children: [
+                        // Age section
+                        _buildResultSection(
+                          context: context,
+                          label: 'Age',
+                          value: AnalysisFormatUtils.parseAgeResult(analysis.ageResult),
+                          icon: Icons.cake,
+                          colorScheme: colorScheme,
+                          textTheme: textTheme,
+                        ),
+                        
+                        const SizedBox(width: 24),
+                        
+                        // Gender section
+                        _buildResultSection(
+                          context: context,
+                          label: 'Gender',
+                          value: AnalysisFormatUtils.parseGenderResult(analysis.genderResult),
+                          icon: _getGenderIcon(analysis.genderResult),
+                          colorScheme: colorScheme,
+                          textTheme: textTheme,
+                        ),
+                      ],
                     ),
                     
-                    const SizedBox(width: 24),
+                    const SizedBox(height: 12),
                     
-                    // Nationality section
-                    _buildResultSection(
-                      context: context,
-                      label: 'Nationality',
-                      value: AnalysisFormatUtils.parseNationalityResult(analysis.nationalityResult),
-                      icon: Icons.public,
-                      colorScheme: colorScheme,
-                      textTheme: textTheme,
+                    // Second row: Nationality (centered)
+                    Row(
+                      children: [
+                        _buildResultSection(
+                          context: context,
+                          label: 'Nationality',
+                          value: AnalysisFormatUtils.parseNationalityResult(analysis.nationalityResult),
+                          icon: Icons.public,
+                          colorScheme: colorScheme,
+                          textTheme: textTheme,
+                        ),
+                        
+                        // Empty expanded to balance the layout
+                        const SizedBox(width: 24),
+                        const Expanded(child: SizedBox()),
+                      ],
                     ),
                   ],
                 ),
@@ -152,6 +177,29 @@ class AnalysisCard extends StatelessWidget {
         ),
       ),
     );
+  }
+  
+  // Helper method to get gender icon based on gender result
+  IconData _getGenderIcon(Map<String, double>? genderResult) {
+    if (genderResult == null || genderResult.isEmpty) {
+      return Icons.person;
+    }
+    
+    // Find the gender with highest probability
+    final topGender = genderResult.entries.reduce(
+      (a, b) => a.value > b.value ? a : b,
+    );
+    
+    switch (topGender.key.toUpperCase()) {
+      case 'F':
+      case 'FEMALE':
+        return Icons.female;
+      case 'M':
+      case 'MALE':
+        return Icons.male;
+      default:
+        return Icons.person;
+    }
   }
   
   Widget _buildResultSection({

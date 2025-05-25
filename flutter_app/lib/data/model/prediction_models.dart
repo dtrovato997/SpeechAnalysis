@@ -1,4 +1,3 @@
-
 class AgePrediction {
   final double predictedAge;
 
@@ -14,7 +13,6 @@ class AgePrediction {
     return {'predicted_age': predictedAge};
   }
 }
-
 
 class GenderPrediction {
   final String predictedGender;
@@ -74,17 +72,12 @@ class AgeGenderPrediction {
     };
   }
 
-  /// Convert to AudioAnalysis format
-  Map<String, double> toAudioAnalysisFormat() {
-    final result = <String, double>{};
-    
-    // Add age as normalized value
-    result['age'] = age.predictedAge / 100.0;
-    
-    // Add gender probabilities
-    result.addAll(gender.probabilities);
-    
-    return result;
+  /// Convert to AudioAnalysis format with separate age and gender fields
+  Map<String, dynamic> toAudioAnalysisFormat() {
+    return {
+      'age': age.predictedAge, // Return the age as a double
+      'gender': gender.probabilities, // Return gender probabilities as Map<String, double>
+    };
   }
 }
 

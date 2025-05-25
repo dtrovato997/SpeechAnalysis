@@ -9,12 +9,13 @@ class AudioAnalysis {
   final String recordingPath;
   final DateTime creationDate;
   final DateTime? completionDate;
-  final Map<String,double>? ageAndGenderResult;
+  final double? ageResult; // Changed: Now just a double for predicted age
+  final Map<String,double>? genderResult; // Changed: Separate gender probabilities
   final Map<String,double>? nationalityResult;
   final bool? ageFeedback;
   final bool? genderFeedback;
   final bool? nationalityFeedback;
-  List<Tag>? tags; // Changed from String? tags to List<Tag>? tags
+  List<Tag>? tags;
 
   AudioAnalysis({
     this.id,
@@ -26,7 +27,8 @@ class AudioAnalysis {
     required this.recordingPath,
     required this.creationDate,
     this.completionDate,
-    this.ageAndGenderResult,
+    this.ageResult, // Changed
+    this.genderResult, // Changed
     this.nationalityResult,
     this.ageFeedback,
     this.genderFeedback,
@@ -34,8 +36,6 @@ class AudioAnalysis {
   });
 
   // Factory method to create Analysis from a Map
-  // Note: This doesn't load tags - they need to be loaded separately
-  /// Factory: parse those two columns into Maps
   factory AudioAnalysis.fromMap(Map<String, dynamic> map) {
     return AudioAnalysis(
       id: map['_id'] as int?,
@@ -48,10 +48,9 @@ class AudioAnalysis {
       completionDate: map['COMPLETION_DATE'] != null
           ? DateTime.parse(map['COMPLETION_DATE'] as String)
           : null,
-      ageAndGenderResult:
-          _stringToMap(map['AGE_AND_GENDER_RESULT'] as String?),
-      nationalityResult:
-          _stringToMap(map['NATIONALITY_RESULT'] as String?),
+      ageResult: map['AGE_RESULT'] as double?, // Changed: Direct double
+      genderResult: _stringToMap(map['GENDER_RESULT'] as String?), // Changed
+      nationalityResult: _stringToMap(map['NATIONALITY_RESULT'] as String?),
       ageFeedback: map['AGE_USER_FEEDBACK'] == 1,
       genderFeedback: map['GENDER_USER_FEEDBACK'] == 1,
       nationalityFeedback: map['NATIONALITY_USER_FEEDBACK'] == 1,
@@ -60,7 +59,6 @@ class AudioAnalysis {
   }
 
   // Convert Analysis to a Map for database operations
-  // Note: This doesn't include tags - they need to be saved separately
   Map<String, dynamic> toMap() {
     return {
       if (id != null) '_id': id,
@@ -71,13 +69,12 @@ class AudioAnalysis {
       'RECORDING_PATH': recordingPath,
       'CREATION_DATE': creationDate.toIso8601String(),
       'COMPLETION_DATE': completionDate?.toIso8601String(),
-      'AGE_AND_GENDER_RESULT': _mapToString(ageAndGenderResult),
+      'AGE_RESULT': ageResult, // Changed: Direct double
+      'GENDER_RESULT': _mapToString(genderResult), // Changed
       'NATIONALITY_RESULT': _mapToString(nationalityResult),
       'AGE_USER_FEEDBACK': ageFeedback != null ? (ageFeedback! ? 1 : 0) : null,
-      'GENDER_USER_FEEDBACK':
-          genderFeedback != null ? (genderFeedback! ? 1 : 0) : null,
-      'NATIONALITY_USER_FEEDBACK':
-          nationalityFeedback != null ? (nationalityFeedback! ? 1 : 0) : null,
+      'GENDER_USER_FEEDBACK': genderFeedback != null ? (genderFeedback! ? 1 : 0) : null,
+      'NATIONALITY_USER_FEEDBACK': nationalityFeedback != null ? (nationalityFeedback! ? 1 : 0) : null,
     };
   }
 
@@ -92,7 +89,8 @@ class AudioAnalysis {
     String? recordingPath,
     DateTime? creationDate,
     DateTime? completionDate,
-    Map<String,double>? ageAndGenderResult,
+    double? ageResult, // Changed
+    Map<String,double>? genderResult, // Changed
     Map<String,double>? nationalityResult,
     bool? ageFeedback,
     bool? genderFeedback,
@@ -108,7 +106,8 @@ class AudioAnalysis {
       recordingPath: recordingPath ?? this.recordingPath,
       creationDate: creationDate ?? this.creationDate,
       completionDate: completionDate ?? this.completionDate,
-      ageAndGenderResult: ageAndGenderResult ?? this.ageAndGenderResult,
+      ageResult: ageResult ?? this.ageResult, // Changed
+      genderResult: genderResult ?? this.genderResult, // Changed
       nationalityResult: nationalityResult ?? this.nationalityResult,
       ageFeedback: ageFeedback ?? this.ageFeedback,
       genderFeedback: genderFeedback ?? this.genderFeedback,
@@ -116,7 +115,7 @@ class AudioAnalysis {
     );
   }
 
-    /// Turn a string like "[YF:0.98,OF:0.1,CF:0.1]" into a Map.
+  /// Turn a string like "[YF:0.98,OF:0.1,CF:0.1]" into a Map.
   static Map<String, double>? _stringToMap(String? raw) {
     if (raw == null) return null;
     final trimmed = raw.trim();

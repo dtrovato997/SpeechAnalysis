@@ -199,7 +199,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     );
   }
 
-  Widget _buildResultsCardsFixed(
+Widget _buildResultsCardsFixed(
     BuildContext context,
     ColorScheme colorScheme,
     TextTheme textTheme,
@@ -248,50 +248,55 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
       );
     }
 
-    // Get the most likely age/gender and nationality
-    final ageGenderEntry = analysis?.ageAndGenderResult?.entries.reduce(
-      (a, b) => a.value > b.value ? a : b,
-    );
-    final nationalityEntry = analysis?.nationalityResult?.entries.reduce(
-      (a, b) => a.value > b.value ? a : b,
-    );
-
-    if (ageGenderEntry == null || nationalityEntry == null) {
+    // Check if we have results
+    if (analysis?.ageResult == null && 
+        (analysis?.genderResult == null || analysis!.genderResult!.isEmpty) &&
+        (analysis?.nationalityResult == null || analysis!.nationalityResult!.isEmpty)) {
       return const SizedBox.shrink();
     }
 
-    // Get result text values
-    final ageGenderLabel =
-        AudioAnalysisDetailViewModel.ageGenderLabels[ageGenderEntry.key] ??
-        ageGenderEntry.key;
+    // Get age result
+    final ageResult = analysis?.ageResult;
+    final ageText = ageResult != null ? '${ageResult.round()} years' : 'Unknown';
 
-    // Determine if this is "Giovane donna" or other combinations
-    String localizedAgeGenderLabel = ageGenderLabel;
-    if (ageGenderEntry.key.contains('YF')) {
-      localizedAgeGenderLabel = 'Giovane donna';
-    } else if (ageGenderEntry.key.contains('YM')) {
-      localizedAgeGenderLabel = 'Giovane uomo';
-    } else if (ageGenderEntry.key.contains('F')) {
-      localizedAgeGenderLabel = 'Donna';
-    } else if (ageGenderEntry.key.contains('M')) {
-      localizedAgeGenderLabel = 'Uomo';
-    } else if (ageGenderEntry.key.contains('C')) {
-      localizedAgeGenderLabel = 'Bambino';
+    // Get the most likely gender
+    String genderText = 'Unknown';
+    String genderKey = 'Unknown';
+    if (analysis?.genderResult != null && analysis!.genderResult!.isNotEmpty) {
+      final genderEntry = analysis.genderResult!.entries.reduce(
+        (a, b) => a.value > b.value ? a : b,
+      );
+      genderKey = genderEntry.key;
+      
+      // Map gender codes to Italian labels
+      if (genderKey == 'M') {
+        genderText = 'Uomo';
+      } else if (genderKey == 'F') {
+        genderText = 'Donna';
+      }
     }
 
-    // Get nationality in Italian
-    final italianNationalityLabel =
-        nationalityEntry.key == 'IT'
-            ? 'Italiano'
-            : nationalityEntry.key == 'FR'
-            ? 'Francese'
-            : nationalityEntry.key == 'EN'
-            ? 'Inglese'
-            : nationalityEntry.key == 'ES'
-            ? 'Spagnolo'
-            : nationalityEntry.key == 'DE'
-            ? 'Tedesco'
-            : 'Sconosciuto';
+    // Get the most likely nationality
+    String nationalityText = 'Sconosciuto';
+    if (analysis?.nationalityResult != null && analysis!.nationalityResult!.isNotEmpty) {
+      final nationalityEntry = analysis.nationalityResult!.entries.reduce(
+        (a, b) => a.value > b.value ? a : b,
+      );
+      
+      // Map nationality codes to Italian labels
+      final nationalityKey = nationalityEntry.key;
+      if (nationalityKey == 'IT') {
+        nationalityText = 'Italiano';
+      } else if (nationalityKey == 'FR') {
+        nationalityText = 'Francese';
+      } else if (nationalityKey == 'EN') {
+        nationalityText = 'Inglese';
+      } else if (nationalityKey == 'ES') {
+        nationalityText = 'Spagnolo';
+      } else if (nationalityKey == 'DE') {
+        nationalityText = 'Tedesco';
+      }
+    }
 
     return Card(
       elevation: 2,
@@ -315,35 +320,64 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
             Divider(),
             Column(
               children: [
-                // Age/Gender Card
-                _buildResultCard(
-                  context: context,
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                  title: 'Età',
-                  confidence: ageGenderEntry.value,
-                  result: localizedAgeGenderLabel,
-                  icon: _getAgeGenderIcon(ageGenderEntry.key),
-                  onLike: () => viewModel.setLikeStatus('AgeAndGender', 1),
-                  onDislike: () => viewModel.setLikeStatus('AgeAndGender', -1),
-                  isLiked: viewModel.getLikeStatus('AgeAndGender') == 1,
-                  isDisliked: viewModel.getLikeStatus('AgeAndGender') == -1,
-                ),
-                const SizedBox(height: 12),
+                // Age Card
+                if (ageResult != null)
+                  _buildResultCard(
+                    context: context,
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
+                    title: 'Età',
+                    confidence: 1.0, // Age is regression, so confidence is not applicable
+                    result: ageText,
+                    icon: Icons.cake,
+                    onLike: () => viewModel.setLikeStatus('Age', 1),
+                    onDislike: () => viewModel.setLikeStatus('Age', -1),
+                    isLiked: viewModel.getLikeStatus('Age') == 1,
+                    isDisliked: viewModel.getLikeStatus('Age') == -1,
+                    showConfidence: false, // Don't show confidence for age
+                  ),
+                
+                if (ageResult != null && analysis!.genderResult != null && analysis.genderResult!.isNotEmpty)
+                  const SizedBox(height: 12),
+                
+                // Gender Card
+                if (analysis!.genderResult != null && analysis.genderResult!.isNotEmpty)
+                  _buildResultCard(
+                    context: context,
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
+                    title: 'Genere',
+                    confidence: analysis.genderResult!.entries.reduce(
+                      (a, b) => a.value > b.value ? a : b,
+                    ).value / 100.0, // Convert percentage to decimal
+                    result: genderText,
+                    icon: _getGenderIcon(genderKey),
+                    onLike: () => viewModel.setLikeStatus('Gender', 1),
+                    onDislike: () => viewModel.setLikeStatus('Gender', -1),
+                    isLiked: viewModel.getLikeStatus('Gender') == 1,
+                    isDisliked: viewModel.getLikeStatus('Gender') == -1,
+                  ),
+                
+                if (analysis.nationalityResult != null && analysis.nationalityResult!.isNotEmpty)
+                  const SizedBox(height: 12),
+                
                 // Nationality Card
-                _buildResultCard(
-                  context: context,
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                  title: 'Nazionalità',
-                  confidence: nationalityEntry.value,
-                  result: italianNationalityLabel,
-                  icon: Icons.public,
-                  onLike: () => viewModel.setLikeStatus('Nationality', 1),
-                  onDislike: () => viewModel.setLikeStatus('Nationality', -1),
-                  isLiked: viewModel.getLikeStatus('Nationality') == 1,
-                  isDisliked: viewModel.getLikeStatus('Nationality') == -1,
-                ),
+                if (analysis.nationalityResult != null && analysis.nationalityResult!.isNotEmpty)
+                  _buildResultCard(
+                    context: context,
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
+                    title: 'Nazionalità',
+                    confidence: analysis.nationalityResult!.entries.reduce(
+                      (a, b) => a.value > b.value ? a : b,
+                    ).value / 100.0, // Convert percentage to decimal
+                    result: nationalityText,
+                    icon: Icons.public,
+                    onLike: () => viewModel.setLikeStatus('Nationality', 1),
+                    onDislike: () => viewModel.setLikeStatus('Nationality', -1),
+                    isLiked: viewModel.getLikeStatus('Nationality') == 1,
+                    isDisliked: viewModel.getLikeStatus('Nationality') == -1,
+                  ),
               ],
             ),
           ],
@@ -352,7 +386,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     );
   }
 
-  Widget _buildResultCard({
+    Widget _buildResultCard({
     required BuildContext context,
     required ColorScheme colorScheme,
     required TextTheme textTheme,
@@ -364,6 +398,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     required VoidCallback onDislike,
     required bool isLiked,
     required bool isDisliked,
+    bool showConfidence = true, // New parameter to control confidence display
   }) {
     return Card(
       elevation: 0,
@@ -434,37 +469,37 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Text(
-                  'Confidenza: ',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+            if (showConfidence) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Text(
+                    'Confidenza: ',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
-                Text(
-                  '${(confidence * 100).toStringAsFixed(2)}%',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold,
+                  Text(
+                    '${(confidence * 100).toStringAsFixed(2)}%',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  IconData _getAgeGenderIcon(String key) {
-    if (key.contains('F')) {
+  IconData _getGenderIcon(String key) {
+    if (key == 'F') {
       return Icons.female;
-    } else if (key.contains('M')) {
+    } else if (key == 'M') {
       return Icons.male;
-    } else if (key.contains('C')) {
-      return Icons.child_care;
     }
     return Icons.person;
   }

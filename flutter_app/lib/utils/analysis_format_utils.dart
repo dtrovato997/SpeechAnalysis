@@ -3,13 +3,10 @@ import 'package:flutter/material.dart';
 
 /// Utility class for formatting analysis results across the app
 class AnalysisFormatUtils {
-  /// Maps for age and gender codes to display labels
-  static const Map<String, String> ageGenderLabels = {
-    'YF': 'Young Female',
-    'YM': 'Young Male',
-    'F': 'Female',
+  /// Maps for gender codes to display labels
+  static const Map<String, String> genderLabels = {
     'M': 'Male',
-    'C': 'Child',
+    'F': 'Female',
     'Unknown': 'Unknown',
   };
 
@@ -38,32 +35,52 @@ class AnalysisFormatUtils {
     }
   }
 
-  /// Common helper to pick the top entry from a Map and map its key via [labels].
-  static String _parseTopFromMap(
-    Map<String, double>? results,
-    Map<String, String> labels,
-  ) {
-    if (results == null || results.isEmpty) return '--';
+  /// Parse age result and return formatted string
+  /// e.g. 25.5 → "26 years old"
+  static String parseAgeResult(double? ageResult) {
+    if (ageResult == null) return '--';
+    return '${ageResult.round()} years old';
+  }
+
+  /// Parse gender result map and return the most likely one
+  /// e.g. { 'M': 85.0, 'F': 15.0 } → 'Male'
+  static String parseGenderResult(Map<String, double>? genderResult) {
+    if (genderResult == null || genderResult.isEmpty) return '--';
 
     // Find the Map entry with the maximum value
-    final topEntry = results.entries.reduce(
+    final topEntry = genderResult.entries.reduce(
       (a, b) => a.value >= b.value ? a : b,
     );
 
     // Return mapped label or raw key
-    return labels[topEntry.key] ?? topEntry.key + topEntry.value.toStringAsFixed(2);
-  }
-
-  /// Parse age/gender result map and return the most likely one
-  /// e.g. { 'YF': 85.0, 'YM': 15.0 } → 'Young Female'
-  static String parseAgeGenderResult(Map<String, double>? ageResult) {
-    return _parseTopFromMap(ageResult, ageGenderLabels);
+    return genderLabels[topEntry.key] ?? topEntry.key;
   }
 
   /// Parse nationality result map and return the most likely one
-  /// e.g. { 'IT': 80.0, 'FR': 12.0 } → 'Italy'
+  /// e.g. { 'IT': 80.0, 'FR': 12.0 } → 'Italian'
   static String parseNationalityResult(Map<String, double>? natResult) {
-    return _parseTopFromMap(natResult, nationalityLabels);
+    if (natResult == null || natResult.isEmpty) return '--';
+
+    // Find the Map entry with the maximum value
+    final topEntry = natResult.entries.reduce(
+      (a, b) => a.value >= b.value ? a : b,
+    );
+
+    // Return mapped label or raw key
+    return nationalityLabels[topEntry.key] ?? topEntry.key;
+  }
+
+  /// Parse combined age and gender for display
+  /// Returns a formatted string like "26 years old, Male"
+  static String parseAgeGenderResult(double? ageResult, Map<String, double>? genderResult) {
+    final age = parseAgeResult(ageResult);
+    final gender = parseGenderResult(genderResult);
+    
+    if (age == '--' && gender == '--') return '--';
+    if (age == '--') return gender;
+    if (gender == '--') return age;
+    
+    return '$age, $gender';
   }
 
   /// Format date in a user-friendly way
@@ -115,14 +132,12 @@ class AnalysisFormatUtils {
     return months[(month - 1).clamp(0, 11)];
   }
 
-  /// Get icon for age/gender code
-  static IconData getAgeGenderIcon(String code) {
-    if (code.contains('F')) {
+  /// Get icon for gender code
+  static IconData getGenderIcon(String genderCode) {
+    if (genderCode.contains('F') || genderCode.toLowerCase() == 'female') {
       return Icons.female;
-    } else if (code.contains('M')) {
+    } else if (genderCode.contains('M') || genderCode.toLowerCase() == 'male') {
       return Icons.male;
-    } else if (code.contains('C')) {
-      return Icons.child_care;
     }
     return Icons.person;
   }

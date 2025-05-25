@@ -2,7 +2,7 @@
 
 class DatabaseConfig {
   static const String databaseName = 'SpeechAnalysis.db';
-  static const int databaseVersion = 2;
+  static const int databaseVersion = 3; // Incremented version for migration
 
   // Table names
   static const String analysisTable = 'AudioAnalysis';
@@ -11,7 +11,7 @@ class DatabaseConfig {
 
   // Create table scripts
   static final List<String> createTableScripts = [
-    // Analysis table (modified to remove the TAG column)
+    // Analysis table with separate age and gender fields
     '''
     CREATE TABLE $analysisTable (
       _id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,7 +22,8 @@ class DatabaseConfig {
       RECORDING_PATH TEXT NOT NULL,
       CREATION_DATE TEXT NOT NULL,
       COMPLETION_DATE TEXT,
-      AGE_AND_GENDER_RESULT TEXT,
+      AGE_RESULT REAL,
+      GENDER_RESULT TEXT,
       NATIONALITY_RESULT TEXT,
       AGE_USER_FEEDBACK INTEGER,
       GENDER_USER_FEEDBACK INTEGER,
@@ -50,8 +51,8 @@ class DatabaseConfig {
     '''
   ];
 
-
   /// Migration scripts keyed by target version
   static final Map<int, List<String>> migrationScripts = {
+
   };
 }

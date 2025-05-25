@@ -93,15 +93,20 @@ class AudioAnalysisRepository extends ChangeNotifier {
       final completePrediction = await _apiService.predictAll(analysis.recordingPath);
       
       if (completePrediction != null) {
-        // Convert to AudioAnalysis format
-        final ageGenderResult = completePrediction.demographics.toAudioAnalysisFormat();
+        // Convert to AudioAnalysis format with separate age and gender
+        final demographicsResult = completePrediction.demographics.toAudioAnalysisFormat();
         final nationalityResult = completePrediction.nationality.toAudioAnalysisFormat();
+        
+        // Extract age and gender separately
+        final ageResult = demographicsResult['age'] as double?;
+        final genderResult = demographicsResult['gender'] as Map<String, double>?;
         
         // Update the analysis with results
         final updatedAnalysis = analysis.copyWith(
           sendStatus: SEND_STATUS_SENT,
           completionDate: DateTime.now(),
-          ageAndGenderResult: ageGenderResult,
+          ageResult: ageResult, // Changed: separate age field
+          genderResult: genderResult, // Changed: separate gender field
           nationalityResult: nationalityResult,
           errorMessage: null, // Clear any previous error
         );
