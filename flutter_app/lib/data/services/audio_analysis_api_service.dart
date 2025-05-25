@@ -1,16 +1,32 @@
-// lib/data/services/api_service.dart
+// lib/data/services/audio_analysis_api_service.dart
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:mobile_speech_recognition/data/model/prediction_models.dart';
 
+/// Custom exception for HTTP errors
+class HttpException implements Exception {
+  final int statusCode;
+  final String message;
+  final String? responseBody;
+
+  HttpException({
+    required this.statusCode,
+    required this.message,
+    this.responseBody,
+  });
+
+  @override
+  String toString() {
+    return 'HTTP Error $statusCode: $message';
+  }
+}
 
 class AudioAnalysisApiService {
   static final AudioAnalysisApiService _instance = AudioAnalysisApiService._internal();
   factory AudioAnalysisApiService() => _instance;
   AudioAnalysisApiService._internal();
 
-  // Base URL - adjust for your environment
   //static const String baseUrl = 'http://10.0.2.2:5000'; // Android emulator
   // static const String baseUrl = 'http://localhost:5000'; // iOS simulator
  static const String baseUrl = 'http://192.168.1.52:5000'; // Physical device
@@ -49,21 +65,51 @@ class AudioAnalysisApiService {
     request.files.add(multipartFile);
 
     print('Sending audio file to $endpoint: $audioFilePath');
-    final streamedResponse = await request.send().timeout(timeoutDuration);
+    
+    http.StreamedResponse streamedResponse;
+    try {
+      streamedResponse = await request.send().timeout(timeoutDuration);
+    } catch (e) {
+      throw Exception('Network error: ${e.toString()}');
+    }
+    
     final response = await http.Response.fromStream(streamedResponse);
 
     print('Server response status: ${response.statusCode}');
     print('Server response body: ${response.body}');
 
     if (response.statusCode == 200) {
-      final jsonResponse = json.decode(response.body);
-      return ApiResponse.fromJson(
-        jsonResponse,
-        (json) => json as Map<String, dynamic>,
-      );
+      try {
+        final jsonResponse = json.decode(response.body);
+        return ApiResponse.fromJson(
+          jsonResponse,
+          (json) => json as Map<String, dynamic>,
+        );
+      } catch (e) {
+        throw HttpException(
+          statusCode: response.statusCode,
+          message: 'Invalid JSON response from server',
+          responseBody: response.body,
+        );
+      }
     } else {
-      final errorBody = response.body.isNotEmpty ? response.body : 'No error message';
-      throw Exception('Server error ${response.statusCode}: $errorBody');
+      // HTTP error - non-200 status code
+      String errorMessage;
+      try {
+        final errorJson = json.decode(response.body);
+        errorMessage = errorJson['error'] ?? errorJson['message'] ?? 'Unknown server error';
+      } catch (e) {
+        // If response body is not JSON, use the raw body or a default message
+        errorMessage = response.body.isNotEmpty 
+            ? response.body 
+            : 'Server error without details';
+      }
+      
+      throw HttpException(
+        statusCode: response.statusCode,
+        message: errorMessage,
+        responseBody: response.body,
+      );
     }
   }
 
@@ -71,15 +117,30 @@ class AudioAnalysisApiService {
   Future<bool> checkServerHealth() async {
     try {
       final uri = Uri.parse('$baseUrl/');
-      final response = await http.get(uri).timeout(const Duration(seconds: 5));
+      
+      http.Response response;
+      try {
+        response = await http.get(uri).timeout(const Duration(seconds: 5));
+      } catch (e) {
+        // Network error
+        print('Server health check network error: $e');
+        return false;
+      }
       
       if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        final modelsLoaded = jsonResponse['models_loaded'];
-        return modelsLoaded['age_gender'] == true && 
-               modelsLoaded['nationality'] == true;
+        try {
+          final jsonResponse = json.decode(response.body);
+          final modelsLoaded = jsonResponse['models_loaded'];
+          return modelsLoaded['age_gender'] == true && 
+                 modelsLoaded['nationality'] == true;
+        } catch (e) {
+          print('Server health check JSON parsing error: $e');
+          return false;
+        }
+      } else {
+        print('Server health check HTTP error: ${response.statusCode}');
+        return false;
       }
-      return false;
     } catch (e) {
       print('Server health check failed: $e');
       return false;

@@ -105,10 +105,10 @@ class AudioAnalysisRepository extends ChangeNotifier {
         final updatedAnalysis = analysis.copyWith(
           sendStatus: SEND_STATUS_SENT,
           completionDate: DateTime.now(),
-          ageResult: ageResult, // Changed: separate age field
-          genderResult: genderResult, // Changed: separate gender field
+          ageResult: ageResult, 
+          genderResult: genderResult,
           nationalityResult: nationalityResult,
-          errorMessage: null, // Clear any previous error
+          errorMessage: null,
         );
 
         // Update database
@@ -121,20 +121,26 @@ class AudioAnalysisRepository extends ChangeNotifier {
     } catch (e) {
       print('Error sending analysis ${analysis.id} to server: $e');
       
-      // Update analysis with error status
+      String errorMessage;
+      
+      if (e is HttpException) {
+        errorMessage = e.message;
+      } else {
+        errorMessage = 'An internal error occurred during analysis processing.';
+      }
+      
       final errorAnalysis = analysis.copyWith(
         sendStatus: SEND_STATUS_ERROR,
-        errorMessage: e.toString(),
+        errorMessage: errorMessage,
       );
 
       await _updateAnalysisInDatabase(errorAnalysis);
     }
 
-    // Notify listeners that data has changed
     notifyListeners();
   }
 
-  /// Update analysis in database
+
   Future<void> _updateAnalysisInDatabase(AudioAnalysis analysis) async {
     if (analysis.id == null) return;
 
@@ -147,7 +153,6 @@ class AudioAnalysisRepository extends ChangeNotifier {
     );
   }
 
-  /// Retry sending a failed analysis to the server
   Future<void> retryAnalysis(int analysisId) async {
     final analysis = await getAnalysisById(analysisId);
     if (analysis == null) {
@@ -158,7 +163,6 @@ class AudioAnalysisRepository extends ChangeNotifier {
       throw Exception('Can only retry failed analyses');
     }
 
-    // Reset to pending status
     final resetAnalysis = analysis.copyWith(
       sendStatus: SEND_STATUS_PENDING,
       errorMessage: null,
@@ -167,7 +171,6 @@ class AudioAnalysisRepository extends ChangeNotifier {
     await _updateAnalysisInDatabase(resetAnalysis);
     notifyListeners();
 
-    // Retry sending to server
     await _sendToServerAsync(resetAnalysis);
   }
 

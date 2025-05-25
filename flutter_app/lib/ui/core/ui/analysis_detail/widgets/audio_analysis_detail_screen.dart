@@ -207,6 +207,11 @@ Widget _buildResultsCardsFixed(
   ) {
     final analysis = viewModel.analysisDetail;
 
+    // Check for error status first
+    if (analysis?.sendStatus == 2) {
+      return _buildErrorCard(context, colorScheme, textTheme, analysis!);
+    }
+
     if (analysis?.sendStatus != 1) {
       // Show loading or pending state
       return Card(
@@ -235,9 +240,7 @@ Widget _buildResultsCardsFixed(
                   Text(
                     analysis?.sendStatus == 0 
                         ? 'Analysis in progress...' 
-                        : analysis?.sendStatus == 2 
-                            ? 'Analysis failed' 
-                            : 'Processing...',
+                        : 'Processing...',
                     style: textTheme.bodyMedium,
                   ),
                 ],
@@ -378,6 +381,159 @@ Widget _buildResultsCardsFixed(
                     isLiked: viewModel.getLikeStatus('Nationality') == 1,
                     isDisliked: viewModel.getLikeStatus('Nationality') == -1,
                   ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build error card for failed analysis
+  Widget _buildErrorCard(
+    BuildContext context,
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+    analysis,
+  ) {
+    return Card(
+      elevation: 2,
+      color: colorScheme.errorContainer,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title with error icon
+            Row(
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  color: colorScheme.error,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Analysis Failed',
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.error,
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Error message section
+            if (analysis.errorMessage != null && analysis.errorMessage!.isNotEmpty) ...[
+              Text(
+                'Error Message:',
+                style: textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onErrorContainer,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: colorScheme.error.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  analysis.errorMessage!,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onErrorContainer,
+                    fontFamily: 'monospace', // Use monospace for error messages
+                  ),
+                ),
+              ),
+            ] else ...[
+              // Generic error message if no specific error is provided
+              Text(
+                'Error Message:',
+                style: textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onErrorContainer,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: colorScheme.error.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  'An unexpected error occurred during analysis processing.',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onErrorContainer,
+                  ),
+                ),
+              ),
+            ],
+            
+            const SizedBox(height: 16),
+            
+            // Action buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Consumer<AudioAnalysisDetailViewModel>(
+                  builder: (context, vm, child) {
+                    return TextButton.icon(
+                      onPressed: vm.isRetrying ? null : () async {
+                        await vm.retryAnalysis();
+                        
+                        // Show feedback to user
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Analysis retry initiated'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
+                      icon: vm.isRetrying 
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: colorScheme.primary,
+                            ),
+                          )
+                        : Icon(
+                            Icons.refresh,
+                            size: 18,
+                            color: vm.isRetrying 
+                                ? colorScheme.onSurface.withOpacity(0.38)
+                                : colorScheme.primary,
+                          ),
+                      label: Text(
+                        vm.isRetrying ? 'Retrying...' : 'Retry Analysis',
+                        style: TextStyle(
+                          color: vm.isRetrying 
+                              ? colorScheme.onSurface.withOpacity(0.38)
+                              : colorScheme.primary,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ],

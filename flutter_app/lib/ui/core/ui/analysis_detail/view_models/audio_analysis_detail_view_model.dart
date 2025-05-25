@@ -35,6 +35,10 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  // Retry loading state
+  bool _isRetrying = false;
+  bool get isRetrying => _isRetrying;
+
   // Error state
   String? _error;
   String? get error => _error;
@@ -111,9 +115,40 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
     }
   }
 
+  // Retry failed analysis
+  Future<void> retryAnalysis() async {
+    if (_analysisId == null || _analysisDetail == null) {
+      return;
+    }
+
+    // Only allow retry for failed analyses
+    if (_analysisDetail!.sendStatus != AudioAnalysisRepository.SEND_STATUS_ERROR) {
+      return;
+    }
+
+    _setRetrying(true);
+
+    try {
+      await _audioAnalysisRepository.retryAnalysis(_analysisId!);
+      // The repository will notify listeners, which will trigger _onRepositoryChanged
+      // and reload the analysis data
+    } catch (e) {
+      print("Error retrying analysis: $e");
+      // You could show a snackbar or other error indication here
+    } finally {
+      _setRetrying(false);
+    }
+  }
+
   // Update loading state
   void _setLoading(bool loading) {
     _isLoading = loading;
+    notifyListeners();
+  }
+
+  // Update retry loading state
+  void _setRetrying(bool retrying) {
+    _isRetrying = retrying;
     notifyListeners();
   }
 
