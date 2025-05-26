@@ -1,12 +1,12 @@
-flask
+fastapi[all]
+uvicorn[standard]
+python-multipart
 audonnx
 audinterface
 librosa
 numpy
-werkzeug
 audeer
 torch
 transformers
 torchaudio
 datasets
-gunicorn
