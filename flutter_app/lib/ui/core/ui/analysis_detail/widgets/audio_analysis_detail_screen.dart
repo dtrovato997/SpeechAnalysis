@@ -529,10 +529,6 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                     confidence: 1.0, // Age is regression, so confidence is not applicable
                     result: ageText,
                     icon: Icons.cake,
-                    onLike: () => viewModel.setLikeStatus('Age', 1),
-                    onDislike: () => viewModel.setLikeStatus('Age', -1),
-                    isLiked: viewModel.getLikeStatus('Age') == 1,
-                    isDisliked: viewModel.getLikeStatus('Age') == -1,
                     showConfidence: false, // Don't show confidence for age
                   ),
 
@@ -549,10 +545,6 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                     confidence: genderConfidence ?? 0.0,
                     result: genderText,
                     icon: AnalysisFormatUtils.getGenderIcon(genderText),
-                    onLike: () => viewModel.setLikeStatus('Gender', 1),
-                    onDislike: () => viewModel.setLikeStatus('Gender', -1),
-                    isLiked: viewModel.getLikeStatus('Gender') == 1,
-                    isDisliked: viewModel.getLikeStatus('Gender') == -1,
                   ),
 
                 if (nationalityText != '--')
@@ -568,10 +560,6 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                     confidence: nationalityConfidence ?? 0.0,
                     result: nationalityText,
                     icon: AnalysisFormatUtils.getNationalityIcon(''),
-                    onLike: () => viewModel.setLikeStatus('Nationality', 1),
-                    onDislike: () => viewModel.setLikeStatus('Nationality', -1),
-                    isLiked: viewModel.getLikeStatus('Nationality') == 1,
-                    isDisliked: viewModel.getLikeStatus('Nationality') == -1,
                   ),
               ],
             ),
@@ -747,10 +735,6 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     required double confidence,
     required String result,
     required IconData icon,
-    required VoidCallback onLike,
-    required VoidCallback onDislike,
-    required bool isLiked,
-    required bool isDisliked,
     bool showConfidence = true, // New parameter to control confidence display
   }) {
     return Card(
@@ -772,36 +756,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                   style: textTheme.titleSmall?.copyWith(
                     color: colorScheme.primary,
                   ),
-                ),
-                const Spacer(),
-                // Thumbs up/down icons
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: onLike,
-                      child: Icon(
-                        Icons.thumb_up_outlined,
-                        size: 16,
-                        color:
-                            isLiked
-                                ? colorScheme.primary
-                                : colorScheme.onSurfaceVariant.withOpacity(0.6),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: onDislike,
-                      child: Icon(
-                        Icons.thumb_down_outlined,
-                        size: 16,
-                        color:
-                            isDisliked
-                                ? colorScheme.error
-                                : colorScheme.onSurfaceVariant.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
+                )
               ],
             ),
             const SizedBox(height: 12),

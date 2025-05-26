@@ -59,20 +59,6 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
     return _likeStatus[resultType] ?? 0;
   }
 
-  // Set like status and notify listeners
-  void setLikeStatus(String resultType, int status) {
-    // If already in this status, toggle back to neutral
-    if (_likeStatus[resultType] == status) {
-      _likeStatus[resultType] = 0;
-    } else {
-      _likeStatus[resultType] = status;
-    }
-    notifyListeners();
-
-    // Here you could also send feedback to your backend
-    // e.g., _apiService.sendFeedback(analysisId, resultType, status);
-  }
-
   // Constructor
   AudioAnalysisDetailViewModel(BuildContext context, {int? analysisId})
     : _audioAnalysisRepository = Provider.of<AudioAnalysisRepository>(
