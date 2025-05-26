@@ -6,6 +6,8 @@ class AnalysisFormatUtils {
   static const Map<String, String> genderLabels = {
     'M': 'Male',
     'F': 'Female',
+    'MALE': 'Male',
+    'FEMALE': 'Female',
     'Unknown': 'Unknown',
   };
 
@@ -32,17 +34,47 @@ class AnalysisFormatUtils {
   }
 
   /// Parse gender result map and return the most likely one
-  /// e.g. { 'M': 85.0, 'F': 15.0 } → 'Male'
+  /// Handles various data formats and key variations
   static String parseGenderResult(Map<String, double>? genderResult) {
-    if (genderResult == null || genderResult.isEmpty) return '--';
+    if (genderResult == null || genderResult.isEmpty) {
+      print('Gender result is null or empty');
+      return '--';
+    }
+
+    print('Gender result data: $genderResult');
 
     // Find the Map entry with the maximum value
     final topEntry = genderResult.entries.reduce(
       (a, b) => a.value >= b.value ? a : b,
     );
 
-    // Return mapped label or raw key
-    return genderLabels[topEntry.key] ?? topEntry.key;
+    print('Top gender entry: ${topEntry.key} = ${topEntry.value}');
+
+    // Handle different key formats and normalize them
+    String normalizedKey = _normalizeGenderKey(topEntry.key);
+    
+    print('Normalized gender key: $normalizedKey');
+
+    // Return mapped label or normalized key
+    final result = genderLabels[normalizedKey] ?? normalizedKey;
+    print('Final gender result: $result');
+    
+    return result;
+  }
+
+  /// Normalize gender keys to handle various formats
+  static String _normalizeGenderKey(String key) {
+    final normalizedKey = key.trim().toUpperCase();
+    
+    // Handle various gender key formats
+    if (normalizedKey == 'M' || normalizedKey == 'MALE' || normalizedKey == 'MAN') {
+      return 'M';
+    } else if (normalizedKey == 'F' || normalizedKey == 'FEMALE' || normalizedKey == 'WOMAN') {
+      return 'F';
+    } else {
+      // Return the original key if no match found
+      return normalizedKey;
+    }
   }
 
   /// Parse nationality result map and return the most likely one with expanded language name
@@ -50,16 +82,24 @@ class AnalysisFormatUtils {
   static String parseNationalityResult(Map<String, double>? natResult) {
     if (natResult == null || natResult.isEmpty) return '--';
 
+    print('Nationality result data: $natResult');
+
     // Find the Map entry with the maximum value
     final topEntry = natResult.entries.reduce(
       (a, b) => a.value >= b.value ? a : b,
     );
 
+    print('Top nationality entry: ${topEntry.key} = ${topEntry.value}');
+
     // Use the language mapping to get the expanded name
-    return LanguageMap.getLanguageNameWithFallback(
+    final result = LanguageMap.getLanguageNameWithFallback(
       topEntry.key, 
       fallback: '--'
     );
+    
+    print('Final nationality result: $result');
+    
+    return result;
   }
 
   /// Parse combined age and gender for display
@@ -157,11 +197,14 @@ class AnalysisFormatUtils {
     return months[(month - 1).clamp(0, 11)];
   }
 
-  /// Get icon for gender code
-  static IconData getGenderIcon(String genderCode) {
-    if (genderCode.contains('F') || genderCode.toLowerCase() == 'female') {
+  /// Get icon for gender code or display text
+  /// Handles both codes (M/F) and display text (Male/Female)
+  static IconData getGenderIcon(String genderText) {
+    final normalized = genderText.toUpperCase();
+    
+    if (normalized.contains('F') || normalized.contains('FEMALE') || normalized.contains('WOMAN')) {
       return Icons.female;
-    } else if (genderCode.contains('M') || genderCode.toLowerCase() == 'male') {
+    } else if (normalized.contains('M') || normalized.contains('MALE') || normalized.contains('MAN')) {
       return Icons.male;
     }
     return Icons.person;

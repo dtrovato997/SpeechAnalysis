@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/view_models/audio_analysis_detail_view_model.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_player_widget.dart';
-import 'package:mobile_speech_recognition/utils/language_map.dart';
+import 'package:mobile_speech_recognition/utils/analysis_format_utils.dart';
 import 'package:provider/provider.dart';
 
 class AudioAnalysisDetailScreen extends StatefulWidget {
@@ -83,6 +83,17 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () => Navigator.pop(context),
               ),
+              actions: [
+                // Delete button in app bar
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: colorScheme.error,
+                  ),
+                  onPressed: () => _showDeleteConfirmationDialog(context, viewModel),
+                  tooltip: 'Delete Analysis',
+                ),
+              ],
             ),
             body: SingleChildScrollView(
               child: Padding(
@@ -142,6 +153,206 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
         },
       ),
     );
+  }
+
+  /// Show delete confirmation dialog
+  Future<void> _showDeleteConfirmationDialog(
+    BuildContext context, 
+    AudioAnalysisDetailViewModel viewModel
+  ) async {
+    final analysis = viewModel.analysisDetail;
+    if (analysis == null) return;
+
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final bool? shouldDelete = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // User must tap button to dismiss
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          icon: Icon(
+            Icons.warning_amber_rounded,
+            color: colorScheme.error,
+            size: 32,
+          ),
+          title: Text(
+            'Delete Analysis',
+            style: textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to delete this analysis?',
+                style: textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: colorScheme.outline.withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Title: ${analysis.title}',
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (analysis.description != null && analysis.description!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Description: ${analysis.description}',
+                        style: textTheme.bodySmall,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Text(
+                      'Created: ${AnalysisFormatUtils.formatDate(analysis.creationDate)}',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: colorScheme.error,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This action cannot be undone.',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.error,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: colorScheme.primary),
+              ),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: colorScheme.error,
+                foregroundColor: colorScheme.onError,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If user confirmed deletion
+    if (shouldDelete == true) {
+      await _performDelete(context, viewModel);
+    }
+  }
+
+  /// Perform the actual deletion
+  Future<void> _performDelete(
+    BuildContext context, 
+    AudioAnalysisDetailViewModel viewModel
+  ) async {
+    final analysis = viewModel.analysisDetail;
+    if (analysis?.id == null) return;
+
+    final colorScheme = Theme.of(context).colorScheme;
+
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: colorScheme.primary),
+                const SizedBox(height: 16),
+                const Text('Deleting analysis...'),
+              ],
+            ),
+          );
+        },
+      );
+
+      // Delete the analysis
+      await viewModel.deleteAnalysis();
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+      }
+
+      // Navigate back first, then show success message
+      if (context.mounted) {
+        // Navigate back to previous screen
+        Navigator.of(context).pop();
+        
+        // Show success message on the previous screen
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Analysis "${analysis!.title}" deleted successfully'),
+            backgroundColor: colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (context.mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+      }
+
+      // Show error message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting analysis: ${e.toString()}'),
+            backgroundColor: colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: colorScheme.onError,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildInformationCard(
@@ -263,41 +474,27 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
       return const SizedBox.shrink();
     }
 
-    // Get age result
-    final ageResult = analysis?.ageResult;
-    final ageText =
-        ageResult != null ? '${ageResult.round()} years' : 'Unknown';
+    // Use AnalysisFormatUtils for consistent parsing
+    final ageText = AnalysisFormatUtils.parseAgeResult(analysis?.ageResult);
+    final genderText = AnalysisFormatUtils.parseGenderResult(analysis?.genderResult);
+    final nationalityText = AnalysisFormatUtils.parseNationalityResult(analysis?.nationalityResult);
 
-    // Get the most likely gender
-    String genderText = 'Unknown';
-    String genderKey = 'Unknown';
+    // Get confidence values for display
+    double? genderConfidence;
+    double? nationalityConfidence;
+
     if (analysis?.genderResult != null && analysis!.genderResult!.isNotEmpty) {
-      final genderEntry = analysis.genderResult!.entries.reduce(
+      final maxGenderEntry = analysis.genderResult!.entries.reduce(
         (a, b) => a.value > b.value ? a : b,
       );
-      genderKey = genderEntry.key;
-
-      // Map gender codes to Italian labels
-      if (genderKey == 'M') {
-        genderText = 'Uomo';
-      } else if (genderKey == 'F') {
-        genderText = 'Donna';
-      }
+      genderConfidence = maxGenderEntry.value / 100.0; // Convert percentage to decimal
     }
 
-    // Get the most likely nationality
-    String nationalityText = 'Unknown';
-    if (analysis?.nationalityResult != null &&
-        analysis!.nationalityResult!.isNotEmpty) {
-      final nationalityEntry = analysis.nationalityResult!.entries.reduce(
+    if (analysis?.nationalityResult != null && analysis!.nationalityResult!.isNotEmpty) {
+      final maxNationalityEntry = analysis.nationalityResult!.entries.reduce(
         (a, b) => a.value > b.value ? a : b,
       );
-
-      // Get the expanded language name
-      nationalityText = LanguageMap.getLanguageNameWithFallback(
-        nationalityEntry.key,
-        fallback: 'Unknown',
-      );
+      nationalityConfidence = maxNationalityEntry.value / 100.0; // Convert percentage to decimal
     }
 
     return Card(
@@ -323,14 +520,13 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
             Column(
               children: [
                 // Age Card
-                if (ageResult != null)
+                if (analysis?.ageResult != null)
                   _buildResultCard(
                     context: context,
                     colorScheme: colorScheme,
                     textTheme: textTheme,
                     title: 'Età',
-                    confidence:
-                        1.0, // Age is regression, so confidence is not applicable
+                    confidence: 1.0, // Age is regression, so confidence is not applicable
                     result: ageText,
                     icon: Icons.cake,
                     onLike: () => viewModel.setLikeStatus('Age', 1),
@@ -340,51 +536,38 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                     showConfidence: false, // Don't show confidence for age
                   ),
 
-                if (ageResult != null &&
-                    analysis!.genderResult != null &&
-                    analysis.genderResult!.isNotEmpty)
+                if (analysis?.ageResult != null && genderText != '--')
                   const SizedBox(height: 12),
 
                 // Gender Card
-                if (analysis!.genderResult != null &&
-                    analysis.genderResult!.isNotEmpty)
+                if (genderText != '--')
                   _buildResultCard(
                     context: context,
                     colorScheme: colorScheme,
                     textTheme: textTheme,
                     title: 'Genere',
-                    confidence:
-                        analysis.genderResult!.entries
-                            .reduce((a, b) => a.value > b.value ? a : b)
-                            .value /
-                        100.0, // Convert percentage to decimal
+                    confidence: genderConfidence ?? 0.0,
                     result: genderText,
-                    icon: _getGenderIcon(genderKey),
+                    icon: AnalysisFormatUtils.getGenderIcon(genderText),
                     onLike: () => viewModel.setLikeStatus('Gender', 1),
                     onDislike: () => viewModel.setLikeStatus('Gender', -1),
                     isLiked: viewModel.getLikeStatus('Gender') == 1,
                     isDisliked: viewModel.getLikeStatus('Gender') == -1,
                   ),
 
-                if (analysis.nationalityResult != null &&
-                    analysis.nationalityResult!.isNotEmpty)
+                if (nationalityText != '--')
                   const SizedBox(height: 12),
 
                 // Nationality Card
-                if (analysis.nationalityResult != null &&
-                    analysis.nationalityResult!.isNotEmpty)
+                if (nationalityText != '--')
                   _buildResultCard(
                     context: context,
                     colorScheme: colorScheme,
                     textTheme: textTheme,
                     title: 'Nazionalità',
-                    confidence:
-                        analysis.nationalityResult!.entries
-                            .reduce((a, b) => a.value > b.value ? a : b)
-                            .value /
-                        100.0, // Convert percentage to decimal
+                    confidence: nationalityConfidence ?? 0.0,
                     result: nationalityText,
-                    icon: Icons.public,
+                    icon: AnalysisFormatUtils.getNationalityIcon(''),
                     onLike: () => viewModel.setLikeStatus('Nationality', 1),
                     onDislike: () => viewModel.setLikeStatus('Nationality', -1),
                     isLiked: viewModel.getLikeStatus('Nationality') == 1,
@@ -663,14 +846,5 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
         ),
       ),
     );
-  }
-
-  IconData _getGenderIcon(String key) {
-    if (key == 'F') {
-      return Icons.female;
-    } else if (key == 'M') {
-      return Icons.male;
-    }
-    return Icons.person;
   }
 }

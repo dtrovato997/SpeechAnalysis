@@ -39,6 +39,10 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
   bool _isRetrying = false;
   bool get isRetrying => _isRetrying;
 
+  // Delete loading state
+  bool _isDeleting = false;
+  bool get isDeleting => _isDeleting;
+
   // Error state
   String? _error;
   String? get error => _error;
@@ -86,7 +90,7 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
   // Called when repository data changes
   void _onRepositoryChanged() {
     // Only reload if we have an analysis ID and it might have been updated
-    if (_analysisId != null) {
+    if (_analysisId != null && !_isDeleting) {
       _loadAnalysis();
     }
   }
@@ -112,6 +116,33 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
       print("Error loading analysis: $e");
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // Delete analysis
+  Future<void> deleteAnalysis() async {
+    if (_analysisId == null) {
+      throw Exception("No analysis ID available for deletion");
+    }
+
+    _setDeleting(true);
+
+    try {
+      // Delete the analysis from the repository
+      await _audioAnalysisRepository.deleteAudioAnalysis(_analysisId!, doNotify: true);
+      
+      // Clear the local analysis data
+      _analysisDetail = null;
+      _error = null;
+      
+      // Note: We don't notify listeners here as the screen will be popped
+      // and the repository will handle notifying other listeners
+    } catch (e) {
+      _error = "Error deleting analysis: ${e.toString()}";
+      print("Error deleting analysis: $e");
+      rethrow; // Re-throw so the UI can handle the error
+    } finally {
+      _setDeleting(false);
     }
   }
 
@@ -150,6 +181,11 @@ class AudioAnalysisDetailViewModel with ChangeNotifier {
   void _setRetrying(bool retrying) {
     _isRetrying = retrying;
     notifyListeners();
+  }
+
+    // Update delete loading state
+  void _setDeleting(bool deleting) {
+    _isDeleting = deleting;
   }
 
   // Format utilities
