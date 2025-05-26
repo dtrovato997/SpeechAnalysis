@@ -46,6 +46,8 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
           if (viewModel.isLoading) {
             return Scaffold(
               appBar: AppBar(
+                scrolledUnderElevation: 0.0,
+                backgroundColor: colorScheme.surfaceBright,
                 title: Text(
                   'Analysis Detail',
                   style: TextStyle(
@@ -67,6 +69,8 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
 
           return Scaffold(
             appBar: AppBar(
+              scrolledUnderElevation: 0.0,
+              backgroundColor: colorScheme.surfaceBright,
               title: Text(
                 'Analysis Detail',
                 style: TextStyle(
@@ -199,7 +203,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     );
   }
 
-Widget _buildResultsCardsFixed(
+  Widget _buildResultsCardsFixed(
     BuildContext context,
     ColorScheme colorScheme,
     TextTheme textTheme,
@@ -238,8 +242,8 @@ Widget _buildResultsCardsFixed(
                   ),
                   const SizedBox(width: 16),
                   Text(
-                    analysis?.sendStatus == 0 
-                        ? 'Analysis in progress...' 
+                    analysis?.sendStatus == 0
+                        ? 'Analysis in progress...'
                         : 'Processing...',
                     style: textTheme.bodyMedium,
                   ),
@@ -252,15 +256,17 @@ Widget _buildResultsCardsFixed(
     }
 
     // Check if we have results
-    if (analysis?.ageResult == null && 
+    if (analysis?.ageResult == null &&
         (analysis?.genderResult == null || analysis!.genderResult!.isEmpty) &&
-        (analysis?.nationalityResult == null || analysis!.nationalityResult!.isEmpty)) {
+        (analysis?.nationalityResult == null ||
+            analysis!.nationalityResult!.isEmpty)) {
       return const SizedBox.shrink();
     }
 
     // Get age result
     final ageResult = analysis?.ageResult;
-    final ageText = ageResult != null ? '${ageResult.round()} years' : 'Unknown';
+    final ageText =
+        ageResult != null ? '${ageResult.round()} years' : 'Unknown';
 
     // Get the most likely gender
     String genderText = 'Unknown';
@@ -270,7 +276,7 @@ Widget _buildResultsCardsFixed(
         (a, b) => a.value > b.value ? a : b,
       );
       genderKey = genderEntry.key;
-      
+
       // Map gender codes to Italian labels
       if (genderKey == 'M') {
         genderText = 'Uomo';
@@ -281,11 +287,12 @@ Widget _buildResultsCardsFixed(
 
     // Get the most likely nationality
     String nationalityText = 'Unknown';
-    if (analysis?.nationalityResult != null && analysis!.nationalityResult!.isNotEmpty) {
+    if (analysis?.nationalityResult != null &&
+        analysis!.nationalityResult!.isNotEmpty) {
       final nationalityEntry = analysis.nationalityResult!.entries.reduce(
         (a, b) => a.value > b.value ? a : b,
       );
-      
+
       // Get the expanded language name
       nationalityText = LanguageMap.getLanguageNameWithFallback(
         nationalityEntry.key,
@@ -322,7 +329,8 @@ Widget _buildResultsCardsFixed(
                     colorScheme: colorScheme,
                     textTheme: textTheme,
                     title: 'Età',
-                    confidence: 1.0, // Age is regression, so confidence is not applicable
+                    confidence:
+                        1.0, // Age is regression, so confidence is not applicable
                     result: ageText,
                     icon: Icons.cake,
                     onLike: () => viewModel.setLikeStatus('Age', 1),
@@ -331,20 +339,25 @@ Widget _buildResultsCardsFixed(
                     isDisliked: viewModel.getLikeStatus('Age') == -1,
                     showConfidence: false, // Don't show confidence for age
                   ),
-                
-                if (ageResult != null && analysis!.genderResult != null && analysis.genderResult!.isNotEmpty)
+
+                if (ageResult != null &&
+                    analysis!.genderResult != null &&
+                    analysis.genderResult!.isNotEmpty)
                   const SizedBox(height: 12),
-                
+
                 // Gender Card
-                if (analysis!.genderResult != null && analysis.genderResult!.isNotEmpty)
+                if (analysis!.genderResult != null &&
+                    analysis.genderResult!.isNotEmpty)
                   _buildResultCard(
                     context: context,
                     colorScheme: colorScheme,
                     textTheme: textTheme,
                     title: 'Genere',
-                    confidence: analysis.genderResult!.entries.reduce(
-                      (a, b) => a.value > b.value ? a : b,
-                    ).value / 100.0, // Convert percentage to decimal
+                    confidence:
+                        analysis.genderResult!.entries
+                            .reduce((a, b) => a.value > b.value ? a : b)
+                            .value /
+                        100.0, // Convert percentage to decimal
                     result: genderText,
                     icon: _getGenderIcon(genderKey),
                     onLike: () => viewModel.setLikeStatus('Gender', 1),
@@ -352,20 +365,24 @@ Widget _buildResultsCardsFixed(
                     isLiked: viewModel.getLikeStatus('Gender') == 1,
                     isDisliked: viewModel.getLikeStatus('Gender') == -1,
                   ),
-                
-                if (analysis.nationalityResult != null && analysis.nationalityResult!.isNotEmpty)
+
+                if (analysis.nationalityResult != null &&
+                    analysis.nationalityResult!.isNotEmpty)
                   const SizedBox(height: 12),
-                
+
                 // Nationality Card
-                if (analysis.nationalityResult != null && analysis.nationalityResult!.isNotEmpty)
+                if (analysis.nationalityResult != null &&
+                    analysis.nationalityResult!.isNotEmpty)
                   _buildResultCard(
                     context: context,
                     colorScheme: colorScheme,
                     textTheme: textTheme,
                     title: 'Nazionalità',
-                    confidence: analysis.nationalityResult!.entries.reduce(
-                      (a, b) => a.value > b.value ? a : b,
-                    ).value / 100.0, // Convert percentage to decimal
+                    confidence:
+                        analysis.nationalityResult!.entries
+                            .reduce((a, b) => a.value > b.value ? a : b)
+                            .value /
+                        100.0, // Convert percentage to decimal
                     result: nationalityText,
                     icon: Icons.public,
                     onLike: () => viewModel.setLikeStatus('Nationality', 1),
@@ -400,11 +417,7 @@ Widget _buildResultsCardsFixed(
             // Title with error icon
             Row(
               children: [
-                Icon(
-                  Icons.error_outline,
-                  color: colorScheme.error,
-                  size: 24,
-                ),
+                Icon(Icons.error_outline, color: colorScheme.error, size: 24),
                 const SizedBox(width: 8),
                 Text(
                   'Analysis Failed',
@@ -415,11 +428,12 @@ Widget _buildResultsCardsFixed(
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Error message section
-            if (analysis.errorMessage != null && analysis.errorMessage!.isNotEmpty) ...[
+            if (analysis.errorMessage != null &&
+                analysis.errorMessage!.isNotEmpty) ...[
               Text(
                 'Error Message:',
                 style: textTheme.bodyMedium?.copyWith(
@@ -476,9 +490,9 @@ Widget _buildResultsCardsFixed(
                 ),
               ),
             ],
-            
+
             const SizedBox(height: 16),
-            
+
             // Action buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -486,41 +500,49 @@ Widget _buildResultsCardsFixed(
                 Consumer<AudioAnalysisDetailViewModel>(
                   builder: (context, vm, child) {
                     return TextButton.icon(
-                      onPressed: vm.isRetrying ? null : () async {
-                        await vm.retryAnalysis();
-                        
-                        // Show feedback to user
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Analysis retry initiated'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        }
-                      },
-                      icon: vm.isRetrying 
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: colorScheme.primary,
-                            ),
-                          )
-                        : Icon(
-                            Icons.refresh,
-                            size: 18,
-                            color: vm.isRetrying 
-                                ? colorScheme.onSurface.withOpacity(0.38)
-                                : colorScheme.primary,
-                          ),
+                      onPressed:
+                          vm.isRetrying
+                              ? null
+                              : () async {
+                                await vm.retryAnalysis();
+
+                                // Show feedback to user
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Analysis retry initiated'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              },
+                      icon:
+                          vm.isRetrying
+                              ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: colorScheme.primary,
+                                ),
+                              )
+                              : Icon(
+                                Icons.refresh,
+                                size: 18,
+                                color:
+                                    vm.isRetrying
+                                        ? colorScheme.onSurface.withOpacity(
+                                          0.38,
+                                        )
+                                        : colorScheme.primary,
+                              ),
                       label: Text(
                         vm.isRetrying ? 'Retrying...' : 'Retry Analysis',
                         style: TextStyle(
-                          color: vm.isRetrying 
-                              ? colorScheme.onSurface.withOpacity(0.38)
-                              : colorScheme.primary,
+                          color:
+                              vm.isRetrying
+                                  ? colorScheme.onSurface.withOpacity(0.38)
+                                  : colorScheme.primary,
                         ),
                       ),
                     );

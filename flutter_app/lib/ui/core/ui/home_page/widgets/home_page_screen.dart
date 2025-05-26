@@ -37,6 +37,7 @@ class _HomePageState extends State<HomePage> {
           
           textAlign: TextAlign.left
         ),
+        scrolledUnderElevation: 0.0,    
         backgroundColor: colorScheme.surfaceBright,
         elevation: 0,
         actions: [
