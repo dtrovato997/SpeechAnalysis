@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
+import 'package:mobile_speech_recognition/utils/analysis_format_utils.dart';
 import 'package:provider/provider.dart';
 
 class AnalysisListViewModel extends ChangeNotifier {
@@ -77,33 +78,48 @@ class AnalysisListViewModel extends ChangeNotifier {
     _applyFilter();
   }
   
-  // Apply filter to analyses
-  void _applyFilter() {
-    if (_searchQuery.isEmpty) {
-      // No filter, show all
-      _filteredAnalyses = List.from(_analyses);
-    } else {
-      // Filter by title, description
-      _filteredAnalyses = _analyses.where((analysis) {
-        final title = analysis.title.toLowerCase();
-        final description = analysis.description?.toLowerCase() ?? '';
-        final query = _searchQuery.toLowerCase();
-        
-        // Check if title or description contains the query
-        final matchesTitle = title.contains(query);
-        final matchesDescription = description.contains(query);
-        
-        // Check if any tags match the query
-        bool matchesTag = false;
-        if (analysis.tags != null) {
-          matchesTag = analysis.tags!.any((tag) => 
-            tag.name.toLowerCase().contains(query)
-          );
-        }
-        
-        return matchesTitle || matchesDescription || matchesTag;
-      }).toList();
-    }
+// Apply filter to analyses
+void _applyFilter() {
+  if (_searchQuery.isEmpty) {
+    // No filter, show all
+    _filteredAnalyses = List.from(_analyses);
+  } else {
+    // Filter by title, description, tags, age, gender, and nationality
+    _filteredAnalyses = _analyses.where((analysis) {
+      final query = _searchQuery.toLowerCase();
+      
+      // Check title
+      final title = analysis.title.toLowerCase();
+      final matchesTitle = title.contains(query);
+      
+      // Check description
+      final description = analysis.description?.toLowerCase() ?? '';
+      final matchesDescription = description.contains(query);
+      
+      // Check tags
+      bool matchesTag = false;
+      if (analysis.tags != null) {
+        matchesTag = analysis.tags!.any((tag) => 
+          tag.name.toLowerCase().contains(query)
+        );
+      }
+      
+      // Check age
+      final ageText = AnalysisFormatUtils.parseAgeResult(analysis.ageResult).toLowerCase();
+      final matchesAge = ageText.contains(query);
+      
+      // Check gender
+      final genderText = AnalysisFormatUtils.parseGenderResult(analysis.genderResult).toLowerCase();
+      final matchesGender = genderText.contains(query);
+      
+      // Check nationality
+      final nationalityText = AnalysisFormatUtils.parseNationalityResult(analysis.nationalityResult).toLowerCase();
+      final matchesNationality = nationalityText.contains(query);
+      
+      return matchesTitle || matchesDescription || matchesTag || 
+             matchesAge || matchesGender || matchesNationality;
+    }).toList();
+  }
     
     notifyListeners();
   }
