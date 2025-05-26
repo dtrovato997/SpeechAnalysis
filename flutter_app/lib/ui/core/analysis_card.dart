@@ -1,4 +1,3 @@
-// lib/ui/core/analysis_card.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
@@ -179,13 +178,11 @@ class AnalysisCard extends StatelessWidget {
     );
   }
   
-  // Helper method to get gender icon based on gender result
   IconData _getGenderIcon(Map<String, double>? genderResult) {
     if (genderResult == null || genderResult.isEmpty) {
       return Icons.person;
     }
     
-    // Find the gender with highest probability
     final topGender = genderResult.entries.reduce(
       (a, b) => a.value > b.value ? a : b,
     );

@@ -1,22 +1,11 @@
-// lib/utils/analysis_format_utils.dart
 import 'package:flutter/material.dart';
+import 'package:mobile_speech_recognition/utils/language_map.dart';
 
-/// Utility class for formatting analysis results across the app
+/// Utility class for formatting analysis results
 class AnalysisFormatUtils {
-  /// Maps for gender codes to display labels
   static const Map<String, String> genderLabels = {
     'M': 'Male',
     'F': 'Female',
-    'Unknown': 'Unknown',
-  };
-
-  /// Maps for nationality codes to display labels
-  static const Map<String, String> nationalityLabels = {
-    'IT': 'Italian',
-    'FR': 'French',
-    'EN': 'English',
-    'ES': 'Spanish',
-    'DE': 'German',
     'Unknown': 'Unknown',
   };
 
@@ -56,8 +45,8 @@ class AnalysisFormatUtils {
     return genderLabels[topEntry.key] ?? topEntry.key;
   }
 
-  /// Parse nationality result map and return the most likely one
-  /// e.g. { 'IT': 80.0, 'FR': 12.0 } → 'Italian'
+  /// Parse nationality result map and return the most likely one with expanded language name
+  /// e.g. { 'ita': 80.0, 'fra': 12.0 } → 'Italian'
   static String parseNationalityResult(Map<String, double>? natResult) {
     if (natResult == null || natResult.isEmpty) return '--';
 
@@ -66,8 +55,11 @@ class AnalysisFormatUtils {
       (a, b) => a.value >= b.value ? a : b,
     );
 
-    // Return mapped label or raw key
-    return nationalityLabels[topEntry.key] ?? topEntry.key;
+    // Use the language mapping to get the expanded name
+    return LanguageMap.getLanguageNameWithFallback(
+      topEntry.key, 
+      fallback: '--'
+    );
   }
 
   /// Parse combined age and gender for display
@@ -81,6 +73,39 @@ class AnalysisFormatUtils {
     if (gender == '--') return age;
     
     return '$age, $gender';
+  }
+
+  /// Get the top N nationality results with expanded names
+  /// Returns a list of language names sorted by confidence
+  static List<MapEntry<String, double>> getTopNationalityResults(
+    Map<String, double>? natResult, 
+    {int topN = 3}
+  ) {
+    if (natResult == null || natResult.isEmpty) return [];
+
+    // Sort by confidence (descending) and take top N
+    final sortedEntries = natResult.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    
+    return sortedEntries.take(topN).toList();
+  }
+
+  /// Get nationality result with confidence percentage
+  /// e.g. "Italian (85.2%)"
+  static String parseNationalityResultWithConfidence(Map<String, double>? natResult) {
+    if (natResult == null || natResult.isEmpty) return '--';
+
+    final topEntry = natResult.entries.reduce(
+      (a, b) => a.value >= b.value ? a : b,
+    );
+
+    final languageName = LanguageMap.getLanguageNameWithFallback(
+      topEntry.key, 
+      fallback: '--'
+    );
+    
+    final confidence = (topEntry.value).toStringAsFixed(1);
+    return '$languageName ($confidence%)';
   }
 
   /// Format date in a user-friendly way
@@ -142,7 +167,7 @@ class AnalysisFormatUtils {
     return Icons.person;
   }
 
-  /// Get icon for nationality code
+  /// Get icon for nationality/language code
   static IconData getNationalityIcon(String code) {
     return Icons.public;
   }

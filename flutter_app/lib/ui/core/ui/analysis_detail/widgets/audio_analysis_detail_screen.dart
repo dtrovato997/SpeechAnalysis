@@ -1,9 +1,9 @@
-// lib/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/view_models/audio_analysis_detail_view_model.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_player_widget.dart';
+import 'package:mobile_speech_recognition/utils/language_map.dart';
 import 'package:provider/provider.dart';
 
 class AudioAnalysisDetailScreen extends StatefulWidget {
@@ -280,25 +280,17 @@ Widget _buildResultsCardsFixed(
     }
 
     // Get the most likely nationality
-    String nationalityText = 'Sconosciuto';
+    String nationalityText = 'Unknown';
     if (analysis?.nationalityResult != null && analysis!.nationalityResult!.isNotEmpty) {
       final nationalityEntry = analysis.nationalityResult!.entries.reduce(
         (a, b) => a.value > b.value ? a : b,
       );
       
-      // Map nationality codes to Italian labels
-      final nationalityKey = nationalityEntry.key;
-      if (nationalityKey == 'IT') {
-        nationalityText = 'Italiano';
-      } else if (nationalityKey == 'FR') {
-        nationalityText = 'Francese';
-      } else if (nationalityKey == 'EN') {
-        nationalityText = 'Inglese';
-      } else if (nationalityKey == 'ES') {
-        nationalityText = 'Spagnolo';
-      } else if (nationalityKey == 'DE') {
-        nationalityText = 'Tedesco';
-      }
+      // Get the expanded language name
+      nationalityText = LanguageMap.getLanguageNameWithFallback(
+        nationalityEntry.key,
+        fallback: 'Unknown',
+      );
     }
 
     return Card(
@@ -542,7 +534,7 @@ Widget _buildResultsCardsFixed(
     );
   }
 
-    Widget _buildResultCard({
+  Widget _buildResultCard({
     required BuildContext context,
     required ColorScheme colorScheme,
     required TextTheme textTheme,
