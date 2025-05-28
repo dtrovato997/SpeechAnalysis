@@ -470,7 +470,7 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
 
     if (shouldContinue == true) {
       _shouldClipAudio = true;
-      setState(() {}); // Refresh UI to show the warning in file info
+      setState(() {}); // Refresh UI to show the warning 
     }
   }
 
@@ -484,12 +484,10 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
     );
 
     if (result != null) {
-      // Set the title and description in the view model
       model.title = result.title;
       model.description = result.description;
 
       try {
-        // Save the uploaded audio
         final analysis = await model.saveAudioAnalysis(
           clipAudio: _shouldClipAudio,
         );
