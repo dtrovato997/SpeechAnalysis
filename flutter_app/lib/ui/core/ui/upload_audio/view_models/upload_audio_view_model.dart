@@ -64,19 +64,11 @@ class UploadAudioViewModel extends ChangeNotifier {
         if (file.path != null) {
           selectedFilePath = file.path!;
           
-          // Check audio duration
-          bool shouldContinue = await _checkAudioDuration();
+          // Check audio duration (always succeeds now)
+          await _checkAudioDuration();
           
-          if (shouldContinue) {
-            notifyListeners();
-            return true;
-          } else {
-            // User refused to continue with long audio
-            selectedFilePath = null;
-            audioDuration = null;
-            notifyListeners();
-            return false;
-          }
+          notifyListeners();
+          return true;
         } else {
           throw Exception('Failed to get file path');
         }
@@ -105,13 +97,9 @@ class UploadAudioViewModel extends ChangeNotifier {
       await _audioPlayer.setFilePath(selectedFilePath!);
       audioDuration = _audioPlayer.duration;
       
-      if (audioDuration != null && audioDuration!.inMinutes >= 2) {
-        // Audio is longer than 2 minutes, need user confirmation
-        return await _showDurationWarningDialog();
-      } else {
-        // Audio is within acceptable duration
-        return true;
-      }
+      // Always return true - let the UI handle the warning
+      // The actual clipping decision will be made when saving
+      return true;
     } catch (e) {
       _setError('Error checking audio duration: ${e.toString()}');
       return false;
@@ -120,12 +108,8 @@ class UploadAudioViewModel extends ChangeNotifier {
     }
   }
 
-  // Show dialog to warn about long audio duration
-  Future<bool> _showDurationWarningDialog() async {
-    // This will be called from the UI, so we need a way to communicate back
-    // We'll use a completer pattern or callback
-    throw UnimplementedError('This should be handled by the UI layer');
-  }
+  // Show dialog to warn about long audio duration - removed this method
+  // The UI will handle this directly
 
   // Process the selected audio file (clip if necessary)
   Future<String?> processAudioFile({bool clipAudio = false}) async {
@@ -136,6 +120,7 @@ class UploadAudioViewModel extends ChangeNotifier {
         // Need to clip the audio to 2 minutes
         return await _clipAudioFile(selectedFilePath!, Duration(minutes: 2));
       } else {
+        // Copy the file to a temporary location for consistency
         return await _copyToTempLocation(selectedFilePath!);
       }
     } catch (e) {
@@ -176,6 +161,7 @@ class UploadAudioViewModel extends ChangeNotifier {
     return tempPath;
   }
 
+  // Save the uploaded audio as an analysis
   Future<AudioAnalysis?> saveAudioAnalysis({bool clipAudio = false}) async {
     if (selectedFilePath == null) {
       _setError('No audio file selected');
@@ -198,12 +184,14 @@ class UploadAudioViewModel extends ChangeNotifier {
         throw Exception('Failed to process audio file');
       }
 
+      // Create the analysis
       final analysis = await _audioAnalysisRepository.createAnalysis(
         title: title,
         description: description,
         recordingPath: processedFilePath,
       );
 
+      // Reset state after successful save
       _resetState();
       
       return analysis;

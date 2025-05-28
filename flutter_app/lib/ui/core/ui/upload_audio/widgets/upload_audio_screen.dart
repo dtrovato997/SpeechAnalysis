@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/ui/core/save_audio_dialog.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/upload_audio/view_models/upload_audio_view_model.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_player_widget.dart';
 import 'package:provider/provider.dart';
 
 class UploadAudioScreen extends StatefulWidget {
@@ -37,45 +38,62 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
           final colorScheme = Theme.of(context).colorScheme;
           final textTheme = Theme.of(context).textTheme;
 
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
-                child: Column(
-                  children: [
-                    Text(
-                      'Upload Audio',
-                      style: textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurface,
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Upload Audio',
+                        style: textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Select an audio file to analyze',
-                      style: textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                      const SizedBox(height: 8),
+                      Text(
+                        'Select an audio file to analyze',
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              // File selection area
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildFileSelectionArea(model, colorScheme, textTheme),
-              ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      // File selection
+                      if (!model.hasSelectedFile)
+                        _buildFileSelectionArea(model, colorScheme, textTheme),
 
-              // Action buttons
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 48, 16, 48),
-                child: _buildActionButtons(model, colorScheme),
-              ),
-            ],
+                      // Audio preview
+                      if (model.hasSelectedFile) ...[
+                        _buildAudioPreviewSection(
+                          model,
+                          colorScheme,
+                          textTheme,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildFileInfoCard(model, colorScheme, textTheme),
+                      ],
+                    ],
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
+                  child: _buildActionButtons(model, colorScheme),
+                ),
+              ],
+            ),
           );
+          ;
         },
       ),
     );
@@ -105,69 +123,30 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: model.hasSelectedFile 
-                  ? colorScheme.primary.withOpacity(0.1)
-                  : colorScheme.primary.withOpacity(0.05),
+              color: colorScheme.primary.withOpacity(0.05),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              model.hasSelectedFile ? Icons.audio_file : Icons.upload_file,
+              Icons.upload_file,
               size: 40,
-              color: model.hasSelectedFile 
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
-          
+
           const SizedBox(height: 16),
 
           // Status text
           if (model.isPickingFile)
             Text(
               'Selecting file...',
-              style: textTheme.bodyLarge?.copyWith(
-                color: colorScheme.primary,
-              ),
+              style: textTheme.bodyLarge?.copyWith(color: colorScheme.primary),
               textAlign: TextAlign.center,
             )
           else if (model.isCheckingDuration)
             Text(
               'Checking audio duration...',
-              style: textTheme.bodyLarge?.copyWith(
-                color: colorScheme.primary,
-              ),
+              style: textTheme.bodyLarge?.copyWith(color: colorScheme.primary),
               textAlign: TextAlign.center,
-            )
-          else if (model.hasSelectedFile)
-            Column(
-              children: [
-                Text(
-                  'Audio file selected',
-                  style: textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Duration: ${model.formatDuration(model.audioDuration)}',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  model.selectedFilePath?.split('/').last ?? '',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
             )
           else
             Column(
@@ -201,11 +180,7 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 20,
-                    color: colorScheme.error,
-                  ),
+                  Icon(Icons.error_outline, size: 20, color: colorScheme.error),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -221,14 +196,17 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
           ],
 
           // Select file button
-          if (!model.hasSelectedFile && !model.isPickingFile && !model.isCheckingDuration) ...[
+          if (!model.isPickingFile && !model.isCheckingDuration) ...[
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () => _selectFile(model),
               style: ElevatedButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 foregroundColor: colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
               icon: const Icon(Icons.folder_open),
               label: const Text('Choose File'),
@@ -239,13 +217,140 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
     );
   }
 
+  Widget _buildAudioPreviewSection(
+    UploadAudioViewModel model,
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+  ) {
+    if (model.selectedFilePath == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section title
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            'Audio Preview',
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onSurface,
+            ),
+          ),
+        ),
+
+        // Audio player widget
+        AudioPlayerWidget(
+          audioPath: model.selectedFilePath!,
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFileInfoCard(
+    UploadAudioViewModel model,
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+  ) {
+    return Card(
+      elevation: 1,
+      color: colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // File info title
+            Text(
+              'File Information',
+              style: textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // File name
+            Row(
+              children: [
+                Icon(Icons.audio_file, size: 18, color: colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    model.selectedFilePath?.split('/').last ?? 'Unknown file',
+                    style: textTheme.bodyMedium,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // Duration
+            Row(
+              children: [
+                Icon(Icons.schedule, size: 18, color: colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Duration: ${model.formatDuration(model.audioDuration)}',
+                  style: textTheme.bodyMedium,
+                ),
+              ],
+            ),
+
+            // Duration warning if applicable
+            if (model.audioDuration != null &&
+                model.audioDuration!.inMinutes >= 2) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: colorScheme.primary.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _shouldClipAudio
+                            ? 'Audio will be clipped to 2 minutes for analysis'
+                            : 'Audio is longer than 2 minutes',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionButtons(
     UploadAudioViewModel model,
     ColorScheme colorScheme,
   ) {
     return Row(
       children: [
-        // Cancel button
         Expanded(
           child: OutlinedButton(
             onPressed: () => Navigator.pop(context),
@@ -256,22 +361,22 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
             child: const Text('Cancel'),
           ),
         ),
-        
+
         const SizedBox(width: 16),
-        
-        // Continue/Select new file button
+
         Expanded(
           child: ElevatedButton(
-            onPressed: model.hasSelectedFile
-                ? () => _showSaveDialog(model)
-                : () => _selectFile(model),
+            onPressed:
+                model.hasSelectedFile
+                    ? () => _showSaveDialog(model)
+                    : () => _selectFile(model),
             style: ElevatedButton.styleFrom(
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
             child: Text(
-              model.hasSelectedFile ? 'Continue' : 'Select File',
+              model.hasSelectedFile ? 'Save & Analyze' : 'Select File',
             ),
           ),
         ),
@@ -281,9 +386,11 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
 
   Future<void> _selectFile(UploadAudioViewModel model) async {
     final success = await model.pickAudioFile();
-    
-    if (!success && model.selectedFilePath != null && model.audioDuration != null) {
-      // This means the duration check failed, show warning dialog
+
+    if (success &&
+        model.audioDuration != null &&
+        model.audioDuration!.inMinutes >= 2) {
+      // Show duration warning dialog
       await _showDurationWarningDialog(model);
     }
   }
@@ -304,9 +411,7 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
           ),
           title: Text(
             'Audio Duration Warning',
-            style: textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -350,10 +455,6 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
             ElevatedButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: ElevatedButton.styleFrom(
@@ -369,12 +470,7 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
 
     if (shouldContinue == true) {
       _shouldClipAudio = true;
-      setState(() {}); // Refresh UI to show the file is selected
-    } else {
-      // User refused, clear the selection
-      model.selectedFilePath = null;
-      model.audioDuration = null;
-      model.notifyListeners();
+      setState(() {}); // Refresh UI to show the warning in file info
     }
   }
 
@@ -406,9 +502,9 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AudioAnalysisDetailScreen(
-                analysisId: analysis.id!,
-              ),
+              builder:
+                  (context) =>
+                      AudioAnalysisDetailScreen(analysisId: analysis.id!),
             ),
           );
         } else {
