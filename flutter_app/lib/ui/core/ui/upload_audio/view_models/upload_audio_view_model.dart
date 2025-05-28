@@ -86,7 +86,6 @@ class UploadAudioViewModel extends ChangeNotifier {
     }
   }
 
-  // Check audio duration and handle clipping if needed
   Future<bool> _checkAudioDuration() async {
     if (selectedFilePath == null) return false;
 
@@ -97,8 +96,6 @@ class UploadAudioViewModel extends ChangeNotifier {
       await _audioPlayer.setFilePath(selectedFilePath!);
       audioDuration = _audioPlayer.duration;
       
-      // Always return true - let the UI handle the warning
-      // The actual clipping decision will be made when saving
       return true;
     } catch (e) {
       _setError('Error checking audio duration: ${e.toString()}');
@@ -108,48 +105,19 @@ class UploadAudioViewModel extends ChangeNotifier {
     }
   }
 
-  // Show dialog to warn about long audio duration - removed this method
-  // The UI will handle this directly
-
-  // Process the selected audio file (clip if necessary)
+  // Process the selected audio fil
   Future<String?> processAudioFile({bool clipAudio = false}) async {
     if (selectedFilePath == null) return null;
 
     try {
-      if (clipAudio && audioDuration != null && audioDuration!.inMinutes >= 2) {
-        // Need to clip the audio to 2 minutes
-        return await _clipAudioFile(selectedFilePath!, Duration(minutes: 2));
-      } else {
-        // Copy the file to a temporary location for consistency
-        return await _copyToTempLocation(selectedFilePath!);
-      }
+      //For now now clipping, i'll let the backend handle it
+      return await _copyToTempLocation(selectedFilePath!);
     } catch (e) {
       _setError('Error processing audio file: ${e.toString()}');
       return null;
     }
   }
 
-  // Clip audio file to specified duration
-  Future<String> _clipAudioFile(String inputPath, Duration maxDuration) async {
-    // For simplicity, we'll just copy the file and trust the backend to handle clipping
-    // In a production app, you would use FFmpeg or similar to actually clip the audio
-    
-    // Get temporary directory
-    final tempDir = await getTemporaryDirectory();
-    final fileName = 'clipped_${DateTime.now().millisecondsSinceEpoch}.${inputPath.split('.').last}';
-    final outputPath = '${tempDir.path}/$fileName';
-    
-    // Copy the original file (backend will handle the actual duration limiting)
-    final inputFile = File(inputPath);
-    await inputFile.copy(outputPath);
-    
-    // Note: In a production app, you would use FFmpeg to actually clip:
-    // ffmpeg -i input.mp3 -t 120 -c copy output.mp3
-    
-    return outputPath;
-  }
-
-  // Copy file to temporary location
   Future<String> _copyToTempLocation(String originalPath) async {
     final tempDir = await getTemporaryDirectory();
     final fileName = 'upload_${DateTime.now().millisecondsSinceEpoch}.${originalPath.split('.').last}';
@@ -203,7 +171,6 @@ class UploadAudioViewModel extends ChangeNotifier {
     }
   }
 
-  // Reset the view model state
   void _resetState() {
     selectedFilePath = null;
     audioDuration = null;
@@ -213,7 +180,6 @@ class UploadAudioViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Helper methods for state management
   void _setPickingFile(bool picking) {
     _isPickingFile = picking;
     notifyListeners();
@@ -238,7 +204,6 @@ class UploadAudioViewModel extends ChangeNotifier {
     _error = null;
   }
 
-  // Format duration for display
   String formatDuration(Duration? duration) {
     if (duration == null) return '--:--';
     
