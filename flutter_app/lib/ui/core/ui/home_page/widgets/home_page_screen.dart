@@ -3,6 +3,7 @@ import 'package:mobile_speech_recognition/ui/core/ui/home_page/view_models/home_
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/widgets/recent_analysis_view_pager.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/record_audio/widgets/record_audio_screen.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_list/widgets/analysis_list_screen.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/upload_audio/widgets/upload_audio_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -295,7 +296,18 @@ class _HomePageState extends State<HomePage> {
               ),
               child: InkWell(
                 onTap: () {
-                  // Handle upload audio tap
+                  showModalBottomSheet(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.95,
+                    ),
+                    context: context,
+                    isDismissible: false,
+                    enableDrag: false,
+                    isScrollControlled: true,
+                    useSafeArea: true,
+                    builder: (BuildContext context) {
+                      return UploadAudioScreen();
+                    });
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),

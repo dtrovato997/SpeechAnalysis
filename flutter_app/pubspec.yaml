@@ -19,7 +19,8 @@ dependencies:
   logger: ^2.0.2+1
   just_audio: ^0.10.3
   audio_video_progress_bar: ^2.0.3
-
+  file_picker: ^8.1.2
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

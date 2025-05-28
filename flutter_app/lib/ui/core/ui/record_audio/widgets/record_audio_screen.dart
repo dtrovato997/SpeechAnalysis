@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/record_audio/view_models/audio_recording_view_model.dart';
-import 'package:mobile_speech_recognition/ui/core/ui/record_audio/widgets/save_audio_dialog.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:mobile_speech_recognition/ui/core/save_audio_dialog.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
 import 'package:provider/provider.dart';
 
 class RecordAudioScreen extends StatefulWidget {
@@ -48,23 +48,14 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
                 model: model,
                 onCancel: _showCancelConfirmationDialog,
                 onSave: () async {
-                  // Only allow save if recording has started
                   if (model.hasStartedRecording) {
                     if (model.isRecording) {
                       await model.pauseRecording();
                     }
                     
-                    // Show the save dialog
+                    // Show the generic save dialog
                     if (model.recordedFilePath != null) {
-                      await showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return ChangeNotifierProvider.value(
-                            value: model, // Pass the same ViewModel
-                            child: SaveAudioDialog(),
-                          );
-                        },
-                      );
+                      await _showSaveDialog(model);
                     }
                   } else {
                     // Show a message if trying to save without recording
@@ -203,6 +194,58 @@ class _RecordAudioScreenState extends State<RecordAudioScreen> {
         );
       },
     );
+  }
+
+  Future<void> _showSaveDialog(AudioRecordingViewModel model) async {
+    final SaveAudioResult? result = await showDialog<SaveAudioResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return SaveAudioDialog.forRecording();
+      },
+    );
+
+    if (result != null) {
+      // Set the title and description in the view model
+      model.Title = result.title;
+      model.Description = result.description;
+
+      try {
+        // Save the recording
+        final analysis = await model.saveRecording();
+
+        if (analysis != null) {
+          // Close the recording screen
+          Navigator.pop(context);
+
+          // Navigate to analysis detail
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AudioAnalysisDetailScreen(
+                analysisId: analysis.id!,
+              ),
+            ),
+          );
+        } else {
+          // Show error if save failed
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to save recording'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } catch (e) {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving recording: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 }
 
