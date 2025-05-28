@@ -14,7 +14,7 @@ class AudioRecordingViewModel extends ChangeNotifier {
   // Audio file path
   String? recordedFilePath;
 
-  // Title and description from SaveAudioDialog
+  // Title and description
   String Title = '';
   String? Description;
 
@@ -159,7 +159,7 @@ class AudioRecordingViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Save recording - this will be called from the SaveAudioDialog
+  // Save recording
   Future<AudioAnalysis?> saveRecording() async {
     try {
       await recorderController.stop();
@@ -179,10 +179,7 @@ class AudioRecordingViewModel extends ChangeNotifier {
 
       // Create a new audio analysis
       AudioAnalysis result = await _audioAnalysisRepository.createAnalysis(
-        title:
-            Title.isEmpty
-                ? 'Recording_${DateTime.now().millisecondsSinceEpoch}'
-                : Title,
+        title: Title,
         description: Description,
         recordingPath: recordedFilePath!,
       );
@@ -192,7 +189,7 @@ class AudioRecordingViewModel extends ChangeNotifier {
       return result;
     } catch (e) {
       print('Error saving recording: $e');
-      // TODO: Handle error appropriately
+      rethrow; 
     }
   }
 
