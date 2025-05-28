@@ -369,14 +369,14 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
             onPressed:
                 model.hasSelectedFile
                     ? () => _showSaveDialog(model)
-                    : () => _selectFile(model),
+                    : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
             child: Text(
-              model.hasSelectedFile ? 'Save & Analyze' : 'Select File',
+             'Save & Analyze'
             ),
           ),
         ),
@@ -479,7 +479,7 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return SaveAudioDialog.forUpload();
+        return SaveAudioDialog.forUpload(initialDescription: model.selectedFilePath?.split('/').last ?? '');
       },
     );
 

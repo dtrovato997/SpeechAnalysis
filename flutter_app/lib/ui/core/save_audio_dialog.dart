@@ -82,7 +82,7 @@ class _SaveAudioDialogState extends State<SaveAudioDialog> {
     } else {
       // Generate default title with date
       final now = DateTime.now();
-      final dateFormatter = DateFormat('dd_MM_yyyy');
+      final dateFormatter = DateFormat('dd_MM_yyyy_HH:mm');
       final formattedDate = dateFormatter.format(now);
       _titleController.text = '${widget.titlePrefix}_$formattedDate';
     }
