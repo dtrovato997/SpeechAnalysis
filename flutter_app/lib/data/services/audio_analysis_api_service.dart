@@ -28,10 +28,11 @@ class AudioAnalysisApiService {
   AudioAnalysisApiService._internal();
 
   //static const String baseUrl = 'http://10.0.2.2:5000'; // Android emulator
-  // static const String baseUrl = 'http://localhost:5000'; // iOS simulator
- static const String baseUrl = 'http://192.168.1.52:5000'; // Physical device
-
-  static const Duration timeoutDuration = Duration(seconds: 30);
+  //static const String baseUrl = 'http://localhost:5000'; // iOS simulator
+ // static const String baseUrl = 'http://192.168.1.52:5000'; // Physical device
+  static const String baseUrl = 'https://dtrovato997-speechanalysisdemo.hf.space'; // Physical device
+  // Timeout is large because inferences can take time on backedn
+  static const Duration timeoutDuration = Duration(minutes: 8);
 
   /// Send audio file for complete analysis (age, gender, nationality)
   Future<CompletePrediction?> predictAll(String audioFilePath) async {
