@@ -8,17 +8,34 @@ MODEL_ID = "facebook/mms-lid-256"
 SAMPLING_RATE = 16000
 
 class NationalityModel:
-    def __init__(self, cache_dir="./cache/nationality"):
+    def __init__(self, cache_dir=None):
+        if cache_dir is None:
+            if os.path.exists("/data"):
+                # HF Spaces persistent storage
+                self.cache_dir = "/data/nationality"
+            else:
+                # Local development or other platforms
+                self.cache_dir = "./cache/nationality"
+        else:
+            self.cache_dir = cache_dir
+            
         self.processor = None
         self.model = None
-        self.cache_dir = cache_dir
-        os.makedirs(cache_dir, exist_ok=True)
+        os.makedirs(self.cache_dir, exist_ok=True)
         
     def load(self):
         try:
             print(f"Loading nationality prediction model from {MODEL_ID}...")
-            self.processor = AutoFeatureExtractor.from_pretrained(MODEL_ID, cache_dir=self.cache_dir)
-            self.model = Wav2Vec2ForSequenceClassification.from_pretrained(MODEL_ID, cache_dir=self.cache_dir)
+            print(f"Using cache directory: {self.cache_dir}")
+            
+            self.processor = AutoFeatureExtractor.from_pretrained(
+                MODEL_ID, 
+                cache_dir=self.cache_dir
+            )
+            self.model = Wav2Vec2ForSequenceClassification.from_pretrained(
+                MODEL_ID, 
+                cache_dir=self.cache_dir
+            )
             print("Nationality prediction model loaded successfully!")
             return True
         except Exception as e:
@@ -30,16 +47,13 @@ class NationalityModel:
             raise ValueError("Model not loaded. Call load() first.")
         
         try:
-            # Ensure audio is properly formatted (float32, mono)
             if len(audio_data.shape) > 1:
                 audio_data = audio_data.mean(axis=0)
             
             audio_data = audio_data.astype(np.float32)
             
-            # Process audio with the feature extractor
             inputs = self.processor(audio_data, sampling_rate=sampling_rate, return_tensors="pt")
             
-            # Get model predictions
             with torch.no_grad():
                 outputs = self.model(**inputs).logits
             
@@ -47,7 +61,6 @@ class NationalityModel:
             probabilities = torch.nn.functional.softmax(outputs, dim=-1)[0]
             top_k_values, top_k_indices = torch.topk(probabilities, k=5)
             
-            # Convert to language codes and probabilities
             top_languages = []
             for i, idx in enumerate(top_k_indices):
                 lang_id = idx.item()

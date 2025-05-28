@@ -6,12 +6,21 @@ import audinterface
 import librosa
 
 class AgeGenderModel:
-    def __init__(self, model_path="./cache/age_and_gender"):
-        self.model_path = model_path
+    def __init__(self, model_path=None):
+        if model_path is None:
+            if os.path.exists("/data"):
+                # HF Spaces persistent storage
+                self.model_path = "/data/age_and_gender"
+            else:
+                # Local development or other platforms
+                self.model_path = "./cache/age_and_gender"
+        else:
+            self.model_path = model_path
+            
         self.model = None
         self.interface = None
         self.sampling_rate = 16000
-        os.makedirs(model_path, exist_ok=True)
+        os.makedirs(self.model_path, exist_ok=True)
     
     def download_model(self):
         model_onnx = os.path.join(self.model_path, 'model.onnx')
@@ -24,7 +33,12 @@ class AgeGenderModel:
         print("Age & gender model files not found. Downloading...")
         
         try:
-            cache_root = 'cache'
+            # Use /data for cache if available, otherwise use local cache, this i nline with HF Spaces persistent storage
+            if os.path.exists("/data"):
+                cache_root = '/data/cache'
+            else:
+                cache_root = 'cache'
+                
             audeer.mkdir(cache_root)
             audeer.mkdir(self.model_path)
             
@@ -57,16 +71,13 @@ class AgeGenderModel:
     
     def load(self):
         try:
-            # Download model if needed
             if not self.download_model():
                 print("Failed to download age & gender model")
                 return False
             
-            # Load the audonnx model
-            print("Loading age & gender model...")
+            print(f"Loading age & gender model from {self.model_path}...")
             self.model = audonnx.load(self.model_path)
             
-            # Create the audinterface Feature interface
             outputs = ['logits_age', 'logits_gender']
             self.interface = audinterface.Feature(
                 self.model.labels(outputs),
@@ -76,7 +87,7 @@ class AgeGenderModel:
                     'concat': True,
                 },
                 sampling_rate=self.sampling_rate,
-                resample=False,  # We handle resampling manually
+                resample=False,
                 verbose=False,
             )
             print("Age & gender model loaded successfully!")
@@ -90,7 +101,7 @@ class AgeGenderModel:
         if self.model is None or self.interface is None:
             raise ValueError("Model not loaded. Call load() first.")
         
-        try:            # Process with the interface
+        try:          
             result = self.interface.process_signal(audio_data, sr)
             
             # Extract and process results
