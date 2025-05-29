@@ -29,8 +29,8 @@ class AudioAnalysisApiService {
 
   //static const String baseUrl = 'http://10.0.2.2:7860'; // Android emulator
   //static const String baseUrl = 'http://localhost:7860'; // iOS simulator
-  static const String baseUrl = 'http://192.168.1.52:7860'; // Physical device
-  //static const String baseUrl = 'https://dtrovato997-speechanalysisdemo.hf.space'; // Physical device
+  //static const String baseUrl = 'http://192.168.1.52:7860'; // Physical device
+  static const String baseUrl = 'https://dtrovato997-speechanalysisdemo.hf.space'; // Hugging Face Space
   // Timeout is large because inferences can take time on backedn
   static const Duration timeoutDuration = Duration(minutes: 8);
 
