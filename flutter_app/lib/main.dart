@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:device_preview/device_preview.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
 import 'package:mobile_speech_recognition/data/repositories/tag_repository.dart';
 import 'package:mobile_speech_recognition/services/exception_handler_service.dart';
@@ -27,7 +28,7 @@ void main() async {
         ),
       ],
       child: DevicePreview(
-        enabled: true,
+        enabled: kDebugMode,
         builder: (context) => const MyApp(),
       ),
     ),
@@ -40,6 +41,10 @@ Future<void> initializeApp() async {
   try {
     // Ensure Flutter binding is initialized
     WidgetsFlutterBinding.ensureInitialized();
+
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
 
     // Initialize logger first
     await logger.initialize();
