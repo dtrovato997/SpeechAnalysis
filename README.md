@@ -156,5 +156,5 @@ flutter run -d android
 
 - **Facebook MMS-LID**: Language identification model
 - **Wav2Vec2**: Age and gender prediction model  
-- **Flutter Team**: Cross-platform framework
+- **Flutter**: Cross-platform framework
 - **FastAPI**: Modern Python web framework
