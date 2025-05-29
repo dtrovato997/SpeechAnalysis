@@ -47,7 +47,7 @@ A simple mobile application for analyzing speech audio to predict **age**, **gen
 #### System Requirements
 - **Mobile**: Android 7.0+ (API 24+) or iOS 12.0+
 
-### 📋 Installation
+### Installation
 
 ## Backend Setup
 
