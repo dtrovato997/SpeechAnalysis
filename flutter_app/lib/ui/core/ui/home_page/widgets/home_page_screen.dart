@@ -126,6 +126,7 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   Container(
+                    margin: EdgeInsets.fromLTRB(0,16,0,0),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                     ),
