@@ -1,0 +1,12 @@
+fastapi[all]
+uvicorn[standard]
+python-multipart
+audonnx
+audinterface
+librosa
+numpy
+audeer
+torch
+transformers
+torchaudio
+datasets
