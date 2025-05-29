@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:just_audio/just_audio.dart';
@@ -57,14 +56,12 @@ class UploadAudioViewModel extends ChangeNotifier {
         allowedExtensions: ['mp3', 'wav', 'm4a'],
         allowMultiple: false,
       );
-
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
         
         if (file.path != null) {
           selectedFilePath = file.path!;
           
-          // Check audio duration (always succeeds now)
           await _checkAudioDuration();
           
           notifyListeners();
@@ -105,30 +102,6 @@ class UploadAudioViewModel extends ChangeNotifier {
     }
   }
 
-  // Process the selected audio fil
-  Future<String?> processAudioFile({bool clipAudio = false}) async {
-    if (selectedFilePath == null) return null;
-
-    try {
-      //For now now clipping, i'll let the backend handle it
-      return await _copyToTempLocation(selectedFilePath!);
-    } catch (e) {
-      _setError('Error processing audio file: ${e.toString()}');
-      return null;
-    }
-  }
-
-  Future<String> _copyToTempLocation(String originalPath) async {
-    final tempDir = await getTemporaryDirectory();
-    final fileName = 'upload_${DateTime.now().millisecondsSinceEpoch}.${originalPath.split('.').last}';
-    final tempPath = '${tempDir.path}/$fileName';
-    
-    final originalFile = File(originalPath);
-    await originalFile.copy(tempPath);
-    
-    return tempPath;
-  }
-
   // Save the uploaded audio as an analysis
   Future<AudioAnalysis?> saveAudioAnalysis({bool clipAudio = false}) async {
     if (selectedFilePath == null) {
@@ -145,18 +118,11 @@ class UploadAudioViewModel extends ChangeNotifier {
       _setSaving(true);
       _clearError();
 
-      // Process the audio file (clip if necessary)
-      final processedFilePath = await processAudioFile(clipAudio: clipAudio);
-      
-      if (processedFilePath == null) {
-        throw Exception('Failed to process audio file');
-      }
 
-      // Create the analysis
       final analysis = await _audioAnalysisRepository.createAnalysis(
         title: title,
         description: description,
-        recordingPath: processedFilePath,
+        recordingPath: selectedFilePath!,
       );
 
       // Reset state after successful save
@@ -214,6 +180,7 @@ class UploadAudioViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    FilePicker.platform.clearTemporaryFiles();
     _audioPlayer.dispose();
     super.dispose();
   }
