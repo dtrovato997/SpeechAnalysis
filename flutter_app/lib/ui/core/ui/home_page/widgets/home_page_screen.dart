@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/view_models/home_view_model.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/widgets/recent_analysis_view_pager.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/record_audio/widgets/record_audio_screen.dart';
@@ -18,7 +19,8 @@ class _HomePageState extends State<HomePage> {
   final double horizontalPadding = 16.0;
   late HomeViewModel viewModel;
   int _currentIndex = 0;
-  final MicrophonePermissionService _permissionService = MicrophonePermissionService();
+  final MicrophonePermissionService _permissionService =
+      MicrophonePermissionService();
 
   @override
   void initState() {
@@ -36,11 +38,14 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Text(
           'Speech Analysis',
-          style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
-          
-          textAlign: TextAlign.left
+          style: TextStyle(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.bold,
+          ),
+
+          textAlign: TextAlign.left,
         ),
-        scrolledUnderElevation: 0.0,    
+        scrolledUnderElevation: 0.0,
         backgroundColor: colorScheme.surfaceBright,
         elevation: 0,
         actions: [
@@ -53,16 +58,12 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       backgroundColor: colorScheme.surfaceBright,
-      
+
       // Use IndexedStack to preserve the state of each tab
       body: IndexedStack(
         index: _currentIndex,
-        children: [
-          _buildHomeContent(),
-          const AnalysisListScreen(),
-        ],
+        children: [_buildHomeContent(), const AnalysisListScreen()],
       ),
-      
 
       bottomNavigationBar: NavigationBar(
         backgroundColor: colorScheme.surfaceBright,
@@ -75,13 +76,25 @@ class _HomePageState extends State<HomePage> {
         },
         destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined, color: colorScheme.onSurfaceVariant),
-            selectedIcon: Icon(Icons.home, color: colorScheme.onPrimaryContainer),
+            icon: Icon(
+              Icons.home_outlined,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            selectedIcon: Icon(
+              Icons.home,
+              color: colorScheme.onPrimaryContainer,
+            ),
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.list_alt_outlined, color: colorScheme.onSurfaceVariant),
-            selectedIcon: Icon(Icons.list_alt, color: colorScheme.onPrimaryContainer),
+            icon: Icon(
+              Icons.list_alt_outlined,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            selectedIcon: Icon(
+              Icons.list_alt,
+              color: colorScheme.onPrimaryContainer,
+            ),
             label: 'Analysis',
           ),
         ],
@@ -179,7 +192,9 @@ class _HomePageState extends State<HomePage> {
                 },
                 child: Text(
                   'View all',
-                  style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
             ],
@@ -194,10 +209,14 @@ class _HomePageState extends State<HomePage> {
             onItemTap: (item) {
               // Handle tap on carousel item
               if (item.id != null) {
-                Navigator.pushNamed(
-                  context, 
-                  '/analysis-detail', 
-                  arguments: int.parse(item.id!)
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => AudioAnalysisDetailScreen(
+                          analysisId: int.parse(item.id!),
+                        ),
+                  ),
                 );
               }
             },
@@ -258,7 +277,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Record and analyze your speech',
+                              'Record speech for age, gender and nationality inference',
                               style: textTheme.bodyMedium,
                             ),
                           ],
@@ -296,7 +315,8 @@ class _HomePageState extends State<HomePage> {
                     useSafeArea: true,
                     builder: (BuildContext context) {
                       return UploadAudioScreen();
-                    });
+                    },
+                  );
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -329,7 +349,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Analyze existing audio recordings',
+                              'Upload audio files for age, gender and nationality inference',
                               style: textTheme.bodyMedium,
                             ),
                           ],
@@ -349,27 +369,27 @@ class _HomePageState extends State<HomePage> {
   Future<void> _handleRecordAudioTap() async {
     try {
       final isGranted = await _permissionService.isPermissionGranted();
-      
+
       if (isGranted) {
         _showRecordingScreen();
         return;
       }
 
       final result = await _permissionService.requestPermission();
-      
+
       switch (result) {
         case PermissionResult.granted:
           _showRecordingScreen();
           break;
-          
+
         case PermissionResult.denied:
           _showPermissionDeniedDialog();
           break;
-          
+
         case PermissionResult.permanentlyDenied:
           _showPermissionPermanentlyDeniedDialog();
           break;
-          
+
         case PermissionResult.error:
           _showPermissionErrorDialog();
           break;
@@ -406,16 +426,10 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          icon: Icon(
-            Icons.mic_off,
-            color: colorScheme.error,
-            size: 32,
-          ),
+          icon: Icon(Icons.mic_off, color: colorScheme.error, size: 32),
           title: Text(
             'Microphone Permission Required',
-            style: textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -466,16 +480,10 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          icon: Icon(
-            Icons.settings,
-            color: colorScheme.primary,
-            size: 32,
-          ),
+          icon: Icon(Icons.settings, color: colorScheme.primary, size: 32),
           title: Text(
             'Permission Required',
-            style: textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -487,7 +495,7 @@ class _HomePageState extends State<HomePage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ]
+            ],
           ),
           actions: [
             TextButton(
@@ -521,16 +529,10 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          icon: Icon(
-            Icons.error_outline,
-            color: colorScheme.error,
-            size: 32,
-          ),
+          icon: Icon(Icons.error_outline, color: colorScheme.error, size: 32),
           title: Text(
             'Permission Error',
-            style: textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
