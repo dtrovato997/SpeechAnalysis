@@ -9,6 +9,7 @@ import time
 from contextlib import asynccontextmanager
 from models.nationality_model import NationalityModel
 from models.age_and_gender_model import AgeGenderModel
+from models.emotions_model import EmotionModel
 
 # Configure logging with more detailed format
 logging.basicConfig(
@@ -27,6 +28,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Global model variables
 age_gender_model = None
 nationality_model = None
+emotion_model = None
 
 def allowed_file(filename: str) -> bool:
     return '.' in filename and \
@@ -50,7 +52,7 @@ def clip_audio_to_max_duration(audio_data: np.ndarray, sr: int, max_duration: in
     return clipped_audio, True
 
 async def load_models() -> bool:
-    global age_gender_model, nationality_model
+    global age_gender_model, nationality_model, emotion_model
     
     try:
         total_start_time = time.time()
@@ -81,6 +83,19 @@ async def load_models() -> bool:
             
         logger.info(f"Nationality model loaded successfully in {nationality_end - nationality_start:.2f} seconds")
         
+        # Load emotion model
+        logger.info("Starting emotion model loading...")
+        emotion_start = time.time()
+        emotion_model = EmotionModel()
+        emotion_success = emotion_model.load()
+        emotion_end = time.time()
+        
+        if not emotion_success:
+            logger.error("Failed to load emotion model")
+            return False
+            
+        logger.info(f"Emotion model loaded successfully in {emotion_end - emotion_start:.2f} seconds")
+        
         total_end = time.time()
         logger.info(f"All models loaded successfully! Total time: {total_end - total_start_time:.2f} seconds")
         return True
@@ -109,7 +124,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app with lifespan events
 app = FastAPI(
     title="Audio Analysis API",
-    description="audio analysis for age, gender, and nationality prediction",
+    description="Audio analysis for age, gender, nationality, and emotion prediction",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -208,25 +223,23 @@ async def process_audio_file(file: UploadFile) -> tuple[np.ndarray, int, bool]:
 async def root() -> Dict[str, Any]:
     logger.info("Root endpoint accessed")
     return {
-        "message": "Audio Analysis API - Age, Gender & Nationality Prediction",
+        "message": "Audio Analysis API - Age, Gender, Nationality & Emotion Prediction",
         "max_audio_duration": f"{MAX_DURATION_SECONDS} seconds (files longer than this will be automatically clipped)",
         "models_loaded": {
             "age_gender": age_gender_model is not None and hasattr(age_gender_model, 'model') and age_gender_model.model is not None,
-            "nationality": nationality_model is not None and hasattr(nationality_model, 'model') and nationality_model.model is not None
+            "nationality": nationality_model is not None and hasattr(nationality_model, 'model') and nationality_model.model is not None,
+            "emotion": emotion_model is not None and hasattr(emotion_model, 'model') and emotion_model.model is not None
         },
         "endpoints": {
             "/predict_age_and_gender": "POST - Upload audio file for age and gender prediction",
             "/predict_nationality": "POST - Upload audio file for nationality prediction",
-            "/predict_all": "POST - Upload audio file for complete analysis (age, gender, nationality)",
+            "/predict_emotion": "POST - Upload audio file for emotion prediction",
+            "/predict_all": "POST - Upload audio file for complete analysis (age, gender, nationality, emotion)",
         },
+        "emotions": ["angry", "disgust", "fear", "happy", "neutral", "sad", "surprise"],
         "docs": "/docs - Interactive API documentation",
         "openapi": "/openapi.json - OpenAPI schema"
     }
-
-@app.get("/health")
-async def health_check() -> Dict[str, str]:
-    logger.info("Health check endpoint accessed")
-    return {"status": "healthy"}
 
 @app.post("/predict_age_and_gender")
 async def predict_age_and_gender(file: UploadFile = File(...)) -> Dict[str, Any]:
@@ -320,6 +333,52 @@ async def predict_nationality(file: UploadFile = File(...)) -> Dict[str, Any]:
         logger.error(f"Error in nationality prediction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/predict_emotion")
+async def predict_emotion(file: UploadFile = File(...)) -> Dict[str, Any]:
+    endpoint_start = time.time()
+    logger.info(f"Emotion prediction requested for file: {file.filename}")
+    
+    if emotion_model is None or not hasattr(emotion_model, 'model') or emotion_model.model is None:
+        logger.error("Emotion model not loaded - returning 500 error")
+        raise HTTPException(status_code=500, detail="Emotion model not loaded")
+    
+    try:
+        processed_audio, processed_sr, was_clipped = await process_audio_file(file)
+        
+        # Make prediction
+        prediction_start = time.time()
+        logger.info("Starting emotion prediction...")
+        predictions = emotion_model.predict(processed_audio, processed_sr)
+        prediction_end = time.time()
+        
+        logger.info(f"Emotion prediction completed in {prediction_end - prediction_start:.3f} seconds")
+        logger.info(f"Predicted emotion: {predictions['predicted_emotion']} (confidence: {predictions['confidence']:.3f})")
+        logger.info(f"Top 3 emotions: {[emo['emotion'] for emo in predictions['top_emotions'][:3]]}")
+        
+        endpoint_end = time.time()
+        logger.info(f"Total emotion endpoint processing time: {endpoint_end - endpoint_start:.3f} seconds")
+        
+        response = {
+            "success": True,
+            "predictions": predictions,
+            "processing_time": round(endpoint_end - endpoint_start, 3),
+            "audio_info": {
+                "was_clipped": was_clipped,
+                "max_duration_seconds": MAX_DURATION_SECONDS
+            }
+        }
+        
+        if was_clipped:
+            response["warning"] = f"Audio was longer than {MAX_DURATION_SECONDS} seconds and was automatically clipped to the first {MAX_DURATION_SECONDS} seconds for analysis."
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in emotion prediction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/predict_all")
 async def predict_all(file: UploadFile = File(...)) -> Dict[str, Any]:
     endpoint_start = time.time()
@@ -333,30 +392,38 @@ async def predict_all(file: UploadFile = File(...)) -> Dict[str, Any]:
         logger.error("Nationality model not loaded - returning 500 error")
         raise HTTPException(status_code=500, detail="Nationality model not loaded")
     
+    if emotion_model is None or not hasattr(emotion_model, 'model') or emotion_model.model is None:
+        logger.error("Emotion model not loaded - returning 500 error")
+        raise HTTPException(status_code=500, detail="Emotion model not loaded")
+    
     try:
         processed_audio, processed_sr, was_clipped = await process_audio_file(file)
         
-        # Get age & gender predictions
         age_prediction_start = time.time()
         logger.info("Starting age & gender prediction for complete analysis...")
         age_gender_predictions = age_gender_model.predict(processed_audio, processed_sr)
         age_prediction_end = time.time()
         logger.info(f"Age & gender prediction completed in {age_prediction_end - age_prediction_start:.3f} seconds")
         
-        # Get nationality predictions
         nationality_prediction_start = time.time()
         logger.info("Starting nationality prediction for complete analysis...")
         nationality_predictions = nationality_model.predict(processed_audio, processed_sr)
         nationality_prediction_end = time.time()
         logger.info(f"Nationality prediction completed in {nationality_prediction_end - nationality_prediction_start:.3f} seconds")
+
+        emotion_prediction_start = time.time()
+        logger.info("Starting emotion prediction for complete analysis...")
+        emotion_predictions = emotion_model.predict(processed_audio, processed_sr)
+        emotion_prediction_end = time.time()
+        logger.info(f"Emotion prediction completed in {emotion_prediction_end - emotion_prediction_start:.3f} seconds")
         
-        # Log combined results
         logger.info(f"Complete analysis results:")
         logger.info(f"  - Age: {age_gender_predictions['age']['predicted_age']:.1f} years")
         logger.info(f"  - Gender: {age_gender_predictions['gender']['predicted_gender']} (confidence: {age_gender_predictions['gender']['confidence']:.3f})")
         logger.info(f"  - Language: {nationality_predictions['predicted_language']} (confidence: {nationality_predictions['confidence']:.3f})")
+        logger.info(f"  - Emotion: {emotion_predictions['predicted_emotion']}")
         
-        total_prediction_time = (age_prediction_end - age_prediction_start) + (nationality_prediction_end - nationality_prediction_start)
+        total_prediction_time = (age_prediction_end - age_prediction_start) + (nationality_prediction_end - nationality_prediction_start) + (emotion_prediction_end - emotion_prediction_start)
         endpoint_end = time.time()
         
         logger.info(f"Total prediction time: {total_prediction_time:.3f} seconds")
@@ -366,12 +433,14 @@ async def predict_all(file: UploadFile = File(...)) -> Dict[str, Any]:
             "success": True,
             "predictions": {
                 "demographics": age_gender_predictions,
-                "nationality": nationality_predictions
+                "nationality": nationality_predictions,
+                "emotion": emotion_predictions
             },
             "processing_time": {
                 "total": round(endpoint_end - endpoint_start, 3),
                 "age_gender": round(age_prediction_end - age_prediction_start, 3),
-                "nationality": round(nationality_prediction_end - nationality_prediction_start, 3)
+                "nationality": round(nationality_prediction_end - nationality_prediction_start, 3),
+                "emotion": round(emotion_prediction_end - emotion_prediction_start, 3)
             },
             "audio_info": {
                 "was_clipped": was_clipped,
