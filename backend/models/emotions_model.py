@@ -5,8 +5,20 @@ import librosa
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification
 
 # Constants
-MODEL_ID = "ehcalabres/wav2vec2-lg-xlsr-en-speech-emotion-recognition"
+MODEL_ID = "Dpngtm/wav2vec2-emotion-recognition"
 SAMPLING_RATE = 16000
+
+# Define the emotion mapping based on the model's expected output
+EMOTION_MAPPING = {
+    "LABEL_0": "angry",
+    "LABEL_1": "calm", 
+    "LABEL_2": "disgust",
+    "LABEL_3": "fearful",
+    "LABEL_4": "happy",
+    "LABEL_5": "neutral",
+    "LABEL_6": "sad",
+    "LABEL_7": "surprised"
+}
 
 class EmotionModel:
     def __init__(self, cache_dir=None):
@@ -37,10 +49,21 @@ class EmotionModel:
 
             self.model = Wav2Vec2ForSequenceClassification.from_pretrained(
                 MODEL_ID, 
+
                 cache_dir=self.cache_dir
             )
             
-            self.emotion_labels = self.model.config.id2label
+            # Get the raw labels from the model
+            raw_labels = self.model.config.id2label
+            
+            # Map the generic labels to meaningful emotion names
+            self.emotion_labels = {}
+            for label_id, raw_label in raw_labels.items():
+                if raw_label in EMOTION_MAPPING:
+                    self.emotion_labels[label_id] = EMOTION_MAPPING[raw_label]
+                else:
+                    # Fallback in case the mapping doesn't match
+                    self.emotion_labels[label_id] = raw_label.lower()
 
             print("Emotion recognition model loaded successfully!")
             print(f"Available emotions: {list(self.emotion_labels.values())}")
@@ -84,6 +107,7 @@ class EmotionModel:
             for i, emotion in self.emotion_labels.items():
                 emotion_scores[emotion] = predictions[0][i].item()
             
+
             return {
                 'predicted_emotion': predicted_emotion,
                 'confidence': confidence,
