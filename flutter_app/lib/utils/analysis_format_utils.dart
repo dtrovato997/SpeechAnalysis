@@ -7,6 +7,8 @@ class AnalysisFormatUtils {
   static const Map<String, String> genderLabels = {
     'M': 'Male',
     'F': 'Female',
+    'C': 'Child',
+    'CHILD': 'Child',
     'MALE': 'Male',
     'FEMALE': 'Female',
     'Unknown': 'Unknown',
@@ -83,8 +85,9 @@ class AnalysisFormatUtils {
       return 'M';
     } else if (normalizedKey == 'F' || normalizedKey == 'FEMALE' || normalizedKey == 'WOMAN') {
       return 'F';
+    } else if(normalizedKey == "C" || normalizedKey == "CHILD" || normalizedKey == "CFM") {
+      return 'C';
     } else {
-      // Return the original key if no match found
       return normalizedKey;
     }
   }
