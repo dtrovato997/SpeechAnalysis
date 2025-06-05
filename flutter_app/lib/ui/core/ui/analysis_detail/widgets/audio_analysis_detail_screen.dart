@@ -490,14 +490,14 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
       final maxGenderEntry = analysis.genderResult!.entries.reduce(
         (a, b) => a.value > b.value ? a : b,
       );
-      genderConfidence = maxGenderEntry.value / 100.0; // Convert percentage to decimal
+      genderConfidence = maxGenderEntry.value;
     }
 
     if (analysis?.nationalityResult != null && analysis!.nationalityResult!.isNotEmpty) {
       final maxNationalityEntry = analysis.nationalityResult!.entries.reduce(
         (a, b) => a.value > b.value ? a : b,
       );
-      nationalityConfidence = maxNationalityEntry.value / 100.0; // Convert percentage to decimal
+      nationalityConfidence = maxNationalityEntry.value;
     }
 
     if (analysis?.emotionResult != null && analysis!.emotionResult!.isNotEmpty) {
