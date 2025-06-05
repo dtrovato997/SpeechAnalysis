@@ -1,3 +1,4 @@
+
 import 'package:mobile_speech_recognition/domain/models/tag/tag.dart';
 
 class AudioAnalysis {
@@ -9,12 +10,14 @@ class AudioAnalysis {
   final String recordingPath;
   final DateTime creationDate;
   final DateTime? completionDate;
-  final double? ageResult; // Changed: Now just a double for predicted age
-  final Map<String,double>? genderResult; // Changed: Separate gender probabilities
-  final Map<String,double>? nationalityResult;
+  final double? ageResult; 
+  final Map<String,double>? genderResult; 
+  final Map<String,double>? nationalityResult; 
+  final Map<String,double>? emotionResult; 
   final bool? ageFeedback;
   final bool? genderFeedback;
   final bool? nationalityFeedback;
+  final bool? emotionFeedback; 
   List<Tag>? tags;
 
   AudioAnalysis({
@@ -27,12 +30,14 @@ class AudioAnalysis {
     required this.recordingPath,
     required this.creationDate,
     this.completionDate,
-    this.ageResult, // Changed
-    this.genderResult, // Changed
+    this.ageResult,
+    this.genderResult,
     this.nationalityResult,
+    this.emotionResult,
     this.ageFeedback,
     this.genderFeedback,
-    this.nationalityFeedback
+    this.nationalityFeedback,
+    this.emotionFeedback,
   });
 
   // Factory method to create Analysis from a Map
@@ -48,12 +53,14 @@ class AudioAnalysis {
       completionDate: map['COMPLETION_DATE'] != null
           ? DateTime.parse(map['COMPLETION_DATE'] as String)
           : null,
-      ageResult: map['AGE_RESULT'] as double?, // Changed: Direct double
-      genderResult: _stringToMap(map['GENDER_RESULT'] as String?), // Changed
+      ageResult: map['AGE_RESULT'] as double?,
+      genderResult: _stringToMap(map['GENDER_RESULT'] as String?),
       nationalityResult: _stringToMap(map['NATIONALITY_RESULT'] as String?),
+      emotionResult: _stringToMap(map['EMOTION_RESULT'] as String?), 
       ageFeedback: map['AGE_USER_FEEDBACK'] == 1,
       genderFeedback: map['GENDER_USER_FEEDBACK'] == 1,
       nationalityFeedback: map['NATIONALITY_USER_FEEDBACK'] == 1,
+      emotionFeedback: map['EMOTION_USER_FEEDBACK'] == 1, 
       tags: null,
     );
   }
@@ -69,12 +76,14 @@ class AudioAnalysis {
       'RECORDING_PATH': recordingPath,
       'CREATION_DATE': creationDate.toIso8601String(),
       'COMPLETION_DATE': completionDate?.toIso8601String(),
-      'AGE_RESULT': ageResult, // Changed: Direct double
-      'GENDER_RESULT': _mapToString(genderResult), // Changed
+      'AGE_RESULT': ageResult,
+      'GENDER_RESULT': _mapToString(genderResult),
       'NATIONALITY_RESULT': _mapToString(nationalityResult),
+      'EMOTION_RESULT': _mapToString(emotionResult),
       'AGE_USER_FEEDBACK': ageFeedback != null ? (ageFeedback! ? 1 : 0) : null,
       'GENDER_USER_FEEDBACK': genderFeedback != null ? (genderFeedback! ? 1 : 0) : null,
       'NATIONALITY_USER_FEEDBACK': nationalityFeedback != null ? (nationalityFeedback! ? 1 : 0) : null,
+      'EMOTION_USER_FEEDBACK': emotionFeedback != null ? (emotionFeedback! ? 1 : 0) : null, // New emotion feedback
     };
   }
 
@@ -89,12 +98,14 @@ class AudioAnalysis {
     String? recordingPath,
     DateTime? creationDate,
     DateTime? completionDate,
-    double? ageResult, // Changed
-    Map<String,double>? genderResult, // Changed
+    double? ageResult,
+    Map<String,double>? genderResult,
     Map<String,double>? nationalityResult,
+    Map<String,double>? emotionResult,
     bool? ageFeedback,
     bool? genderFeedback,
-    bool? nationalityFeedback
+    bool? nationalityFeedback,
+    bool? emotionFeedback,
   }) {
     return AudioAnalysis(
       id: id ?? this.id,
@@ -106,12 +117,14 @@ class AudioAnalysis {
       recordingPath: recordingPath ?? this.recordingPath,
       creationDate: creationDate ?? this.creationDate,
       completionDate: completionDate ?? this.completionDate,
-      ageResult: ageResult ?? this.ageResult, // Changed
-      genderResult: genderResult ?? this.genderResult, // Changed
+      ageResult: ageResult ?? this.ageResult,
+      genderResult: genderResult ?? this.genderResult,
       nationalityResult: nationalityResult ?? this.nationalityResult,
+      emotionResult: emotionResult ?? this.emotionResult,
       ageFeedback: ageFeedback ?? this.ageFeedback,
       genderFeedback: genderFeedback ?? this.genderFeedback,
-      nationalityFeedback: nationalityFeedback ?? this.nationalityFeedback
+      nationalityFeedback: nationalityFeedback ?? this.nationalityFeedback,
+      emotionFeedback: emotionFeedback ?? this.emotionFeedback,
     );
   }
 

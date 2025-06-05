@@ -78,49 +78,53 @@ class AnalysisListViewModel extends ChangeNotifier {
     _applyFilter();
   }
   
-// Apply filter to analyses
-void _applyFilter() {
-  if (_searchQuery.isEmpty) {
-    // No filter, show all
-    _filteredAnalyses = List.from(_analyses);
-  } else {
-    // Filter by title, description, tags, age, gender, and nationality
-    _filteredAnalyses = _analyses.where((analysis) {
-      final query = _searchQuery.toLowerCase();
+  // Apply filter to analyses
+  void _applyFilter() {
+    if (_searchQuery.isEmpty) {
+      // No filter, show all
+      _filteredAnalyses = List.from(_analyses);
+    } else {
+      // Filter by title, description, tags, age, gender, nationality, and emotion
+      _filteredAnalyses = _analyses.where((analysis) {
+        final query = _searchQuery.toLowerCase();
+        
+        // Check title
+        final title = analysis.title.toLowerCase();
+        final matchesTitle = title.contains(query);
+        
+        // Check description
+        final description = analysis.description?.toLowerCase() ?? '';
+        final matchesDescription = description.contains(query);
+        
+        // Check tags
+        bool matchesTag = false;
+        if (analysis.tags != null) {
+          matchesTag = analysis.tags!.any((tag) => 
+            tag.name.toLowerCase().contains(query)
+          );
+        }
+        
+        // Check age
+        final ageText = AnalysisFormatUtils.parseAgeResult(analysis.ageResult).toLowerCase();
+        final matchesAge = ageText.contains(query);
+        
+        // Check gender
+        final genderText = AnalysisFormatUtils.parseGenderResult(analysis.genderResult).toLowerCase();
+        final matchesGender = genderText.contains(query);
+        
+        // Check nationality
+        final nationalityText = AnalysisFormatUtils.parseNationalityResult(analysis.nationalityResult).toLowerCase();
+        final matchesNationality = nationalityText.contains(query);
+        
+        // Check emotion
+        final emotionText = AnalysisFormatUtils.parseEmotionResult(analysis.emotionResult).toLowerCase();
+        final matchesEmotion = emotionText.contains(query);
+        
+        return matchesTitle || matchesDescription || matchesTag || 
+               matchesAge || matchesGender || matchesNationality || matchesEmotion;
+      }).toList();
+    }
       
-      // Check title
-      final title = analysis.title.toLowerCase();
-      final matchesTitle = title.contains(query);
-      
-      // Check description
-      final description = analysis.description?.toLowerCase() ?? '';
-      final matchesDescription = description.contains(query);
-      
-      // Check tags
-      bool matchesTag = false;
-      if (analysis.tags != null) {
-        matchesTag = analysis.tags!.any((tag) => 
-          tag.name.toLowerCase().contains(query)
-        );
-      }
-      
-      // Check age
-      final ageText = AnalysisFormatUtils.parseAgeResult(analysis.ageResult).toLowerCase();
-      final matchesAge = ageText.contains(query);
-      
-      // Check gender
-      final genderText = AnalysisFormatUtils.parseGenderResult(analysis.genderResult).toLowerCase();
-      final matchesGender = genderText.contains(query);
-      
-      // Check nationality
-      final nationalityText = AnalysisFormatUtils.parseNationalityResult(analysis.nationalityResult).toLowerCase();
-      final matchesNationality = nationalityText.contains(query);
-      
-      return matchesTitle || matchesDescription || matchesTag || 
-             matchesAge || matchesGender || matchesNationality;
-    }).toList();
-  }
-    
     notifyListeners();
   }
 

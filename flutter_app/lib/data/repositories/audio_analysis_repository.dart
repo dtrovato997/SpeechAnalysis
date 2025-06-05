@@ -1,3 +1,4 @@
+// lib/data/repositories/audio_analysis_repository.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/config/database_config.dart';
 import 'package:mobile_speech_recognition/data/repositories/tag_repository.dart';
@@ -93,9 +94,10 @@ class AudioAnalysisRepository extends ChangeNotifier {
       final completePrediction = await _apiService.predictAll(analysis.recordingPath);
       
       if (completePrediction != null) {
-        // Convert to AudioAnalysis format with separate age and gender
+        // Convert to AudioAnalysis format with separate age, gender, nationality, and emotion
         final demographicsResult = completePrediction.demographics.toAudioAnalysisFormat();
         final nationalityResult = completePrediction.nationality.toAudioAnalysisFormat();
+        final emotionResult = completePrediction.emotion.toAudioAnalysisFormat();
         
         // Extract age and gender separately
         final ageResult = demographicsResult['age'] as double?;
@@ -108,6 +110,7 @@ class AudioAnalysisRepository extends ChangeNotifier {
           ageResult: ageResult, 
           genderResult: genderResult,
           nationalityResult: nationalityResult,
+          emotionResult: emotionResult,
           errorMessage: null,
         );
 
@@ -139,7 +142,6 @@ class AudioAnalysisRepository extends ChangeNotifier {
 
     notifyListeners();
   }
-
 
   Future<void> _updateAnalysisInDatabase(AudioAnalysis analysis) async {
     if (analysis.id == null) return;

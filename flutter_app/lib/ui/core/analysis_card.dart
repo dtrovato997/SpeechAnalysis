@@ -1,3 +1,4 @@
+// lib/ui/core/analysis_card.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
@@ -94,7 +95,7 @@ class AnalysisCard extends StatelessWidget {
                 const Divider(),
                 const SizedBox(height: 8),
                 
-                // Analysis data: age, gender and nationality sections
+                // Analysis data: age, gender, nationality, and emotion sections
                 Column(
                   children: [
                     // First row: Age and Gender
@@ -126,9 +127,10 @@ class AnalysisCard extends StatelessWidget {
                     
                     const SizedBox(height: 12),
                     
-                    // Second row: Nationality (centered)
+                    // Second Row : Nationality and Emotion section
                     Row(
                       children: [
+                        // Nationality section
                         _buildResultSection(
                           context: context,
                           label: 'Nationality',
@@ -138,9 +140,17 @@ class AnalysisCard extends StatelessWidget {
                           textTheme: textTheme,
                         ),
                         
-                        // Empty expanded to balance the layout
                         const SizedBox(width: 24),
-                        const Expanded(child: SizedBox()),
+                        
+                        // Emotion section
+                        _buildResultSection(
+                          context: context,
+                          label: 'Emotion',
+                          value: AnalysisFormatUtils.parseEmotionResult(analysis.emotionResult),
+                          icon: _getEmotionIcon(analysis.emotionResult),
+                          colorScheme: colorScheme,
+                          textTheme: textTheme,
+                        ),
                       ],
                     ),
                   ],
@@ -197,6 +207,18 @@ class AnalysisCard extends StatelessWidget {
       default:
         return Icons.person;
     }
+  }
+
+  IconData _getEmotionIcon(Map<String, double>? emotionResult) {
+    if (emotionResult == null || emotionResult.isEmpty) {
+      return Icons.mood;
+    }
+    
+    final topEmotion = emotionResult.entries.reduce(
+      (a, b) => a.value > b.value ? a : b,
+    );
+    
+    return AnalysisFormatUtils.getEmotionIcon(topEmotion.key);
   }
   
   Widget _buildResultSection({
