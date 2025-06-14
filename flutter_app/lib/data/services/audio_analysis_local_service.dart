@@ -28,7 +28,7 @@ class LocalInferenceService {
       
       // Initialize ONNX Runtime environment
       OrtEnv.instance.init();
-      
+      var providers = OrtEnv.instance.availableProviders();
       // Check if models exist
       final emotionModelExists = await _assetExists('assets/models/emotion_model.onnx');
       
@@ -60,6 +60,9 @@ class LocalInferenceService {
       final bytes = rawAssetFile.buffer.asUint8List();
       
       final sessionOptions = OrtSessionOptions();
+      sessionOptions.appendNnapiProvider(NnapiFlags.cpuDisabled);
+      sessionOptions.appendXnnpackProvider();
+      sessionOptions.appendCPUProvider(CPUFlags.useNone);
       _emotionSession = OrtSession.fromBuffer(bytes, sessionOptions);
       sessionOptions.release();
       
@@ -144,6 +147,7 @@ class LocalInferenceService {
       
       // Create run options
       runOptions = OrtRunOptions();
+
       
       // Run inference (this automatically uses isolates if needed)
       outputs = await _emotionSession!.runAsync(runOptions, inputs);
