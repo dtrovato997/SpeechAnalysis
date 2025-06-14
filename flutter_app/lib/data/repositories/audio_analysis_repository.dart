@@ -71,7 +71,9 @@ class AudioAnalysisRepository extends ChangeNotifier {
     notifyListeners();
 
     // Send to server for analysis in the background
-    await _processAudioAsync(updatedAnalysis);
+    _processAudioAsync(updatedAnalysis).then((_) {
+      notifyListeners();
+    });
 
     return updatedAnalysis;
   }
