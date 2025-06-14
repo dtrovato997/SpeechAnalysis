@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'dart:math' as dart_math;
 import 'dart:typed_data';
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new/return_code.dart';
+import 'package:path/path.dart' as path;
 import 'package:onnxruntime/onnxruntime.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_speech_recognition/data/model/prediction_models.dart';
@@ -16,6 +19,10 @@ class LocalInferenceService {
   bool _isInitialized = false;
   OrtSession? _emotionSession;
 
+  // Audio processing constants
+  static const int _targetSampleRate = 16000;
+  static const int _maxDurationSeconds = 120; // 2 minutes
+
   /// Initialize the service
   Future<bool> initialize() async {
     if (_isInitialized) {
@@ -29,6 +36,7 @@ class LocalInferenceService {
       // Initialize ONNX Runtime environment
       OrtEnv.instance.init();
       var providers = OrtEnv.instance.availableProviders();
+      
       // Check if models exist
       final emotionModelExists = await _assetExists('assets/models/emotion_model.onnx');
       
@@ -83,46 +91,154 @@ class LocalInferenceService {
     }
   }
 
-  /// Preprocess audio file to the required format
-  Future<Float32List?> _preprocessAudio(String audioFilePath) async {
+  /// Get a temporary file path for audio processing
+  String _getTempAudioPath(String originalPath) {
+    final tempDir = Directory.systemTemp;
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final filename = 'audio_${timestamp}_processed.pcm';
+    return path.join(tempDir.path, filename);
+  }
+
+  /// Check if the audio file format is supported
+  bool _isSupportedFormat(String filePath) {
+    final extension = path.extension(filePath).toLowerCase();
+    return ['.mp3', '.wav', '.m4a'].contains(extension);
+  }
+
+  /// Process audio file with FFmpeg and extract raw audio data
+  Future<Float32List?> _processAudioWithFFmpeg(String inputPath) async {
+    String? outputPath;
+    
     try {
-      final file = File(audioFilePath);
+      if (!_isSupportedFormat(inputPath)) {
+        _logger.error('Unsupported audio format: ${path.extension(inputPath)}');
+        return null;
+      }
+
+      outputPath = _getTempAudioPath(inputPath);
+      
+      // FFmpeg command to:
+      // - Convert to raw PCM format (no headers)
+      // - Resample to 16kHz
+      // - Convert to mono
+      // - Normalize audio levels
+      // - Limit duration to 2 minutes
+      // - Output as 32-bit float PCM (little-endian)
+      final command = '-i "$inputPath" -t ${_maxDurationSeconds.toString()} -ar ${_targetSampleRate.toString()} -ac 1 -f f32le -acodec pcm_f32le -y "$outputPath"';
+
+      _logger.debug('Executing FFmpeg command: $command');
+
+      final session = await FFmpegKit.execute(command);
+      final returnCode = await session.getReturnCode();
+
+      if (ReturnCode.isSuccess(returnCode)) {
+        _logger.info('Audio processing completed successfully');
+        
+        // Read the raw PCM data
+        final audioData = await _readRawPCMFile(outputPath);
+        return audioData;
+      } else {
+        final logs = await session.getAllLogs();
+        final errorMessage = logs.map((log) => log.getMessage()).join('\n');
+        _logger.error('FFmpeg processing failed: $errorMessage');
+        return null;
+      }
+    } catch (e, stackTrace) {
+      _logger.error('Error processing audio with FFmpeg', e, stackTrace);
+      return null;
+    } finally {
+      // Always clean up the temporary file
+      if (outputPath != null) {
+        try {
+          final tempFile = File(outputPath);
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+            _logger.debug('Temporary PCM file cleaned up: $outputPath');
+          }
+        } catch (e) {
+          _logger.warning('Failed to clean up temporary PCM file: $e');
+        }
+      }
+    }
+  }
+
+  /// Read raw PCM float32 file and convert to Float32List
+  Future<Float32List?> _readRawPCMFile(String pcmPath) async {
+    try {
+      final file = File(pcmPath);
       if (!await file.exists()) {
-        _logger.error('Audio file not found: $audioFilePath');
+        _logger.error('Processed PCM file not found: $pcmPath');
         return null;
       }
 
       final audioBytes = await file.readAsBytes();
       
-      // Skip WAV header and convert to float samples
-      const headerSize = 44;
-      const maxSamples = 16000 * 30; // 30 seconds at 16kHz
-      
-      if (audioBytes.length <= headerSize) {
-        _logger.error('Audio file too small');
-        return null;
-      }
-
+      // Convert bytes to float32 array
+      // Each float32 is 4 bytes (little-endian)
+      final byteData = ByteData.sublistView(Uint8List.fromList(audioBytes));
       final audioSamples = <double>[];
-      for (int i = headerSize; i < audioBytes.length - 1; i += 2) {
-        final sample = (audioBytes[i] | (audioBytes[i + 1] << 8));
-        final normalizedSample = sample / 32768.0;
-        audioSamples.add(normalizedSample);
-      }
-
-      // Pad or trim to exact size
-      if (audioSamples.length > maxSamples) {
-        audioSamples.removeRange(maxSamples, audioSamples.length);
-      } else {
-        while (audioSamples.length < maxSamples) {
-          audioSamples.add(0.0);
+      
+      for (int i = 0; i < audioBytes.length; i += 4) {
+        if (i + 3 < audioBytes.length) {
+          final floatValue = byteData.getFloat32(i, Endian.little);
+          audioSamples.add(floatValue);
         }
       }
 
-      _logger.debug('Audio preprocessed: ${audioSamples.length} samples');
+      // Normalize audio like in the Python code
+      // Find the maximum absolute value for normalization
+      double maxAbsValue = 0.0;
+      for (final sample in audioSamples) {
+        final absValue = sample.abs();
+        if (absValue > maxAbsValue) {
+          maxAbsValue = absValue;
+        }
+      }
+      
+      // Normalize by dividing by max absolute value (avoid division by zero)
+      if (maxAbsValue > 0.0) {
+        for (int i = 0; i < audioSamples.length; i++) {
+          audioSamples[i] = audioSamples[i] / maxAbsValue;
+        }
+        _logger.debug('Audio normalized with max absolute value: $maxAbsValue');
+      } else {
+        _logger.warning('Audio contains only silence, skipping normalization');
+      }
+
+
+      _logger.info('Audio samples extracted and normalized: ${audioSamples.length} samples');
       return Float32List.fromList(audioSamples);
+      
     } catch (e, stackTrace) {
-      _logger.error('Error preprocessing audio', e, stackTrace);
+      _logger.error('Error reading PCM file', e, stackTrace);
+      return null;
+    }
+  }
+
+  /// Enhanced audio preprocessing using FFmpeg
+  Future<Float32List?> _preprocessAudio(String audioFilePath) async {
+    try {
+      final inputFile = File(audioFilePath);
+      if (!await inputFile.exists()) {
+        _logger.error('Audio file not found: $audioFilePath');
+        return null;
+      }
+
+      _logger.info('Starting audio preprocessing for: $audioFilePath');
+
+      // Process audio with FFmpeg and get the audio data directly
+      // Temporary files are created and cleaned up inside _processAudioWithFFmpeg
+      final audioData = await _processAudioWithFFmpeg(audioFilePath);
+      if (audioData == null) {
+        _logger.error('Failed to process audio with FFmpeg');
+        return null;
+      }
+
+      _logger.info('Audio preprocessing completed successfully');
+      return audioData;
+      
+    } catch (e, stackTrace) {
+      _logger.error('Error in audio preprocessing', e, stackTrace);
       return null;
     }
   }
@@ -147,9 +263,8 @@ class LocalInferenceService {
       
       // Create run options
       runOptions = OrtRunOptions();
-
       
-      // Run inference (this automatically uses isolates if needed)
+      // Run inference
       outputs = await _emotionSession!.runAsync(runOptions, inputs);
       
       if (outputs == null || outputs.isEmpty) {
