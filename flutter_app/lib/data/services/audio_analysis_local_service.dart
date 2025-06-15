@@ -18,6 +18,7 @@ class LocalInferenceService {
   final LoggerService _logger = LoggerService();
   bool _isInitialized = false;
   OrtSession? _emotionSession;
+  OrtSession? _ageGenderSession;
 
   // Audio processing constants
   static const int _targetSampleRate = 16000;
@@ -39,6 +40,7 @@ class LocalInferenceService {
       
       // Check if models exist
       final emotionModelExists = await _assetExists('assets/models/emotion_model.onnx');
+      final ageGenderModelExists = await _assetExists('assets/models/age_and_gender_model.onnx');
       
       if (!emotionModelExists) {
         _logger.error('Emotion model not found');
@@ -46,8 +48,15 @@ class LocalInferenceService {
         return false;
       }
 
-      // Load the emotion model
+      if (!ageGenderModelExists) {
+        _logger.error('Age and gender model not found');
+        OrtEnv.instance.release();
+        return false;
+      }
+
+      // Load the models
       await _loadEmotionModel();
+      await _loadAgeGenderModel();
 
       _isInitialized = true;
       _logger.info('LocalInferenceService initialized successfully');
@@ -68,7 +77,7 @@ class LocalInferenceService {
       final bytes = rawAssetFile.buffer.asUint8List();
       
       final sessionOptions = OrtSessionOptions();
-      sessionOptions.appendNnapiProvider(NnapiFlags.cpuDisabled);
+      sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
       sessionOptions.appendXnnpackProvider();
       sessionOptions.appendCPUProvider(CPUFlags.useNone);
       _emotionSession = OrtSession.fromBuffer(bytes, sessionOptions);
@@ -77,6 +86,27 @@ class LocalInferenceService {
       _logger.info('Emotion model loaded successfully');
     } catch (e) {
       _logger.error('Failed to load emotion model: $e');
+      rethrow;
+    }
+  }
+
+  /// Load the age and gender model
+  Future<void> _loadAgeGenderModel() async {
+    try {
+      const assetFileName = 'assets/models/age_and_gender_model.onnx';
+      final rawAssetFile = await rootBundle.load(assetFileName);
+      final bytes = rawAssetFile.buffer.asUint8List();
+      
+      final sessionOptions = OrtSessionOptions();
+      sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
+      sessionOptions.appendXnnpackProvider();
+      sessionOptions.appendCPUProvider(CPUFlags.useNone);
+      _ageGenderSession = OrtSession.fromBuffer(bytes, sessionOptions);
+      sessionOptions.release();
+      
+      _logger.info('Age and gender model loaded successfully');
+    } catch (e) {
+      _logger.error('Failed to load age and gender model: $e');
       rethrow;
     }
   }
@@ -205,7 +235,6 @@ class LocalInferenceService {
         _logger.warning('Audio contains only silence, skipping normalization');
       }
 
-
       _logger.info('Audio samples extracted and normalized: ${audioSamples.length} samples');
       return Float32List.fromList(audioSamples);
       
@@ -312,6 +341,120 @@ class LocalInferenceService {
     }
   }
 
+  /// Run age and gender prediction on preprocessed audio data
+  Future<AgeGenderPrediction?> _predictAgeGender(Float32List audioData) async {
+    if (_ageGenderSession == null) {
+      _logger.error('Age and gender model not loaded');
+      return null;
+    }
+
+    OrtValueTensor? inputTensor;
+    OrtRunOptions? runOptions;
+    List<OrtValue?>? outputs;
+    
+    try {
+      final inputShape = [1, audioData.length];
+      
+      // Create input tensor
+      inputTensor = OrtValueTensor.createTensorWithDataList(audioData, inputShape);
+      final inputs = {'signal': inputTensor};
+      
+      // Create run options
+      runOptions = OrtRunOptions();
+      
+      // Run inference
+      outputs = await _ageGenderSession!.runAsync(runOptions, inputs);
+      
+      if (outputs == null || outputs.length < 2) {
+        _logger.error('Insufficient outputs from age and gender model');
+        return null;
+      }
+      
+      // Get age logits (first output)
+      final ageOutput = outputs[1];
+      if (ageOutput == null) {
+        _logger.error('Age output is null');
+        return null;
+      }
+      
+      // Get gender logits (second output)
+      final genderOutput = outputs[2];
+      if (genderOutput == null) {
+        _logger.error('Gender output is null');
+        return null;
+      }
+      
+      // Process age prediction (regression output - single value)
+      final ageData = ageOutput.value;
+      double predictedAge;
+      
+      if (ageData is List<List<double>>) {
+        predictedAge = ageData[0][0] * 100; // Batch size 1, single output
+      } else if (ageData is List<double>) {
+        predictedAge = ageData[0] * 100;
+      } else {
+        _logger.error('Unexpected age output format: ${ageData.runtimeType}');
+        return null;
+      }
+      
+      // Process gender prediction (classification output)
+      final genderData = genderOutput.value as List<List<double>>;
+      final genderLogits = genderData[0]; // Assuming batch size of 1
+      
+      final genderLabels = ['female', 'male', 'child'];
+      
+      // Apply softmax to get gender probabilities
+      final genderProbs = _applySoftmax(genderLogits, genderLabels);
+      
+      // Find the top gender prediction
+      final topGender = genderProbs.entries.reduce(
+        (a, b) => a.value > b.value ? a : b,
+      );
+      
+      // Map gender labels to expected format (M/F/C)
+      String mappedGender;
+      switch (topGender.key.toLowerCase()) {
+        case 'female':
+          mappedGender = 'F';
+          break;
+        case 'male':
+          mappedGender = 'M';
+          break;
+        case 'child':
+          mappedGender = 'C';
+          break;
+        default:
+          mappedGender = 'M'; // Default fallback
+      }
+      
+      // Create mapped probabilities with M/F/C keys
+      final mappedGenderProbs = <String, double>{
+        'F': genderProbs['female'] ?? 0.0,
+        'M': genderProbs['male'] ?? 0.0,
+        'C': genderProbs['child'] ?? 0.0,
+      };
+      
+      _logger.info('Age and gender prediction completed: Age=${predictedAge.toStringAsFixed(1)}, Gender=$mappedGender (${topGender.value.toStringAsFixed(3)})');
+      
+      return AgeGenderPrediction(
+        age: AgePrediction(predictedAge: predictedAge),
+        gender: GenderPrediction(
+          predictedGender: mappedGender,
+          probabilities: mappedGenderProbs,
+          confidence: topGender.value,
+        ),
+      );
+    } catch (e, stackTrace) {
+      _logger.error('Error during age and gender prediction', e, stackTrace);
+      return null;
+    } finally {
+      // Clean up resources
+      inputTensor?.release();
+      runOptions?.release();
+      outputs?.forEach((output) => output?.release());
+    }
+  }
+
   /// Apply softmax function to convert logits to probabilities
   Map<String, double> _applySoftmax(List<double> logits, List<String> labels) {
     final emotionProbs = <String, double>{};
@@ -359,17 +502,15 @@ class LocalInferenceService {
         _logger.error('Failed to predict emotion');
         return null;
       }
+
+      // Run age and gender prediction
+      final demographics = await _predictAgeGender(audioData);
+      if (demographics == null) {
+        _logger.error('Failed to predict age and gender');
+        return null;
+      }
       
-      // For demo purposes, create dummy age/gender/nationality predictions
-      final demographics = AgeGenderPrediction(
-        age: AgePrediction(predictedAge: 25.0),
-        gender: GenderPrediction(
-          predictedGender: "M",
-          probabilities: {'M': 0.75, 'F': 0.25},
-          confidence: 0.75,
-        ),
-      );
-      
+      // For demo purposes, create dummy nationality prediction
       final nationality = NationalityPrediction(
         predictedLanguage: "ita",
         confidence: 0.99,
@@ -391,11 +532,11 @@ class LocalInferenceService {
   }
 
   /// Check if local inference is available
-  bool get isAvailable => _isInitialized && _emotionSession != null;
+  bool get isAvailable => _isInitialized && _emotionSession != null && _ageGenderSession != null;
 
   /// Get available models
   Map<String, bool> get availableModels => {
-    'age_gender': false, // Not implemented
+    'age_gender': _ageGenderSession != null,
     'nationality': false, // Not implemented
     'emotion': _emotionSession != null,
   };
@@ -405,6 +546,9 @@ class LocalInferenceService {
     try {
       _emotionSession?.release();
       _emotionSession = null;
+      
+      _ageGenderSession?.release();
+      _ageGenderSession = null;
       
       if (_isInitialized) {
         OrtEnv.instance.release();
