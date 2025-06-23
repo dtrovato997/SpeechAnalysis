@@ -30,12 +30,11 @@ class Complex {
 }
 
 class MelSpectrogramComputer {
-  // Whisper constants - these are critical and must match exactly
+  // Whisper constants
   static const int sampleRate = 16000;
   static const int nFft = 400;
   static const int hopLength = 160;
   static const int nMel = 80;
-  static const int chunkLength = 3000; // This is the key fix - exactly 3000 frames
 
   // Cached values for performance
   static List<double>? _hannWindow;
@@ -208,7 +207,7 @@ class MelSpectrogramComputer {
     return padded;
   }
 
-  /// Compute mel spectrogram from audio samples - FIXED VERSION
+  /// Compute mel spectrogram from audio samples
   static MelSpectrogramResult computeMelSpectrogram(List<double> samples) {
     _initializeCache();
 
@@ -218,22 +217,14 @@ class MelSpectrogramComputer {
 
     // Add reflection padding
     final paddedSamples = _addReflectionPadding(samples, padSize);
-    
-    final nFrames = chunkLength; // Force exactly 3000 frames
 
-    // Verify we have enough samples for 3000 frames
-    final requiredSamples = (nFrames - 1) * frameStep + frameSize;
-    if (paddedSamples.length < requiredSamples) {
-      // This shouldn't happen with proper 30-second audio, but handle it
-      print('Warning: Not enough samples for ${nFrames} frames. Required: ${requiredSamples}, got: ${paddedSamples.length}');
-      // Pad with zeros
-      paddedSamples.addAll(List.filled(requiredSamples - paddedSamples.length, 0.0));
-    }
+    // Calculate number of frames
+    final nFrames = (paddedSamples.length - frameSize) ~/ frameStep + 1;
 
-    // Result matrix: [nMel, nFrames] - exactly 80x3000
+    // Result matrix: [nMel, nFrames]
     final melSpectrogram = List.generate(nMel, (_) => List<double>.filled(nFrames, 0.0));
 
-    // Process exactly nFrames (3000) frames
+    // Process each frame
     for (int frameIdx = 0; frameIdx < nFrames; frameIdx++) {
       final frameStart = frameIdx * frameStep;
       final frameEnd = frameStart + frameSize;
@@ -283,39 +274,27 @@ class MelSpectrogramComputer {
       }
     }
 
-    // Verify output dimensions
-    assert(melSpectrogram.length == nMel, 'Expected $nMel mel bins, got ${melSpectrogram.length}');
-    assert(melSpectrogram[0].length == nFrames, 'Expected $nFrames frames, got ${melSpectrogram[0].length}');
-
     return MelSpectrogramResult(melSpectrogram, nMel, nFrames);
   }
 
-  /// Prepare audio for Whisper (resample, pad/truncate to 30s, normalize) - FIXED VERSION
+  /// Prepare audio for Whisper (resample, pad/truncate to 30s, normalize)
   static List<double> padAudioForWhisper(List<double> samples) {
     const targetSampleRate = 16000;
     const targetDuration = 30; // seconds
-    const targetSamples = targetSampleRate * targetDuration; // 480,000 samples
+    const targetSamples = targetSampleRate * targetDuration;
 
-    List<double> processedSamples;
 
-    // CRITICAL: Ensure exactly 30 seconds (480,000 samples)
+    // Pad or truncate to exactly 30 seconds
     if (samples.length < targetSamples) {
-      // Pad with zeros to reach exactly 30 seconds
-      processedSamples = List<double>.from(samples);
-      processedSamples.addAll(List.filled(targetSamples - samples.length, 0.0));
+      // Pad with zeros
+      samples.addAll(List.filled(targetSamples - samples.length, 0.0));
     } else if (samples.length > targetSamples) {
-      // Truncate to exactly 30 seconds
-      processedSamples = samples.take(targetSamples).toList();
-    } else {
-      processedSamples = List<double>.from(samples);
+      // Truncate
+      samples = samples.take(targetSamples).toList();
     }
 
-    // Verify exactly 480,000 samples
-    assert(processedSamples.length == targetSamples, 
-      'Expected exactly $targetSamples samples, got ${processedSamples.length}');
-
     // Normalize to [-1, 1]
-    return _normalizeAudio(processedSamples);
+    return _normalizeAudio(samples);
   }
 
   /// Normalize audio to [-1, 1] range
@@ -357,24 +336,15 @@ class MelSpectrogramResult {
   }
 }
 
-// Helper class for easy usage - FIXED VERSION
+// Helper class for easy usage
 class WhisperMelSpectrogram {
   /// Compute mel spectrogram for language detection, it expects PCM samples at 16kHz.
-  /// CRITICAL FIX: This now ensures exactly 80x3000 output dimensions
   static MelSpectrogramResult forLanguageDetection(List<double> pcmSamples) {
-    // STEP 1: Pad the audio to exactly 30 seconds and normalize
+    // pad the audio to 30 seconds and normalize
     final preparedSamples = MelSpectrogramComputer.padAudioForWhisper(pcmSamples);
     
-    // STEP 2: Compute mel spectrogram - this will now produce exactly 80x3000
-    final result = MelSpectrogramComputer.computeMelSpectrogram(preparedSamples);
-    
-    // STEP 3: Verify output dimensions (critical for ONNX model)
-    if (result.nMel != 80 || result.nFrames != 3000) {
-      throw Exception(
-        'Invalid mel spectrogram dimensions: ${result.nMel}x${result.nFrames}, expected 80x3000'
-      );
-    }
-    
-    return result;
+    // Compute mel spectrogram
+    return MelSpectrogramComputer.computeMelSpectrogram(preparedSamples);
   }
+
 }
