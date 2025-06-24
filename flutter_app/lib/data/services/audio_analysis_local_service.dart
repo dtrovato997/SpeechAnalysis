@@ -510,7 +510,7 @@ class LocalInferenceService {
       
       // Create input tensor
       inputTensor = OrtValueTensor.createTensorWithDataList(audioData, inputShape);
-      final inputs = {'input': inputTensor}; // Adjust input name if needed
+      final inputs = {'signal': inputTensor}; // Adjust input name if needed
       
       // Create run options
       runOptions = OrtRunOptions();
