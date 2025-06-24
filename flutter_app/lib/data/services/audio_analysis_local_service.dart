@@ -11,13 +11,14 @@ import 'package:mobile_speech_recognition/services/logger_service.dart';
 
 /// Service for running local ONNX model inference on audio files
 class LocalInferenceService {
-  static final LocalInferenceService _instance = LocalInferenceService._internal();
+  static final LocalInferenceService _instance =
+      LocalInferenceService._internal();
   factory LocalInferenceService() => _instance;
   LocalInferenceService._internal();
 
   final LoggerService _logger = LoggerService();
   bool _isInitialized = false;
-  
+
   // ONNX Runtime sessions
   OrtSession? _emotionSession;
   OrtSession? _ageGenderSession;
@@ -29,9 +30,20 @@ class LocalInferenceService {
 
   // Language vocabulary - matches your Python model
   static const List<String> _languageVocabulary = [
-    'chinese', 'english', 'french', 'german', 'indonesian', 
-    'italian', 'japanese', 'korean', 'portuguese', 'russian', 
-    'spanish', 'turkish', 'vietnamese', 'other'
+    'chinese',
+    'english',
+    'french',
+    'german',
+    'indonesian',
+    'italian',
+    'japanese',
+    'korean',
+    'portuguese',
+    'russian',
+    'spanish',
+    'turkish',
+    'vietnamese',
+    'other',
   ];
 
   /// Initialize the service
@@ -43,16 +55,22 @@ class LocalInferenceService {
 
     try {
       _logger.info('Initializing LocalInferenceService...');
-      
+
       // Initialize ONNX Runtime environment
       OrtEnv.instance.init();
       var providers = OrtEnv.instance.availableProviders();
-      
+
       // Check if models exist
-      final emotionModelExists = await _assetExists('assets/models/emotion_model.onnx');
-      final ageGenderModelExists = await _assetExists('assets/models/age_and_gender_model.onnx');
-      final languageModelExists = await _assetExists('assets/models/language_model.onnx');
-      
+      final emotionModelExists = await _assetExists(
+        'assets/models/emotion_model.onnx',
+      );
+      final ageGenderModelExists = await _assetExists(
+        'assets/models/age_and_gender_model.onnx',
+      );
+      final languageModelExists = await _assetExists(
+        'assets/models/language_model.onnx',
+      );
+
       if (!emotionModelExists) {
         _logger.error('Emotion model not found');
         OrtEnv.instance.release();
@@ -80,7 +98,11 @@ class LocalInferenceService {
       _logger.info('LocalInferenceService initialized successfully');
       return true;
     } catch (e, stackTrace) {
-      _logger.error('Failed to initialize LocalInferenceService', e, stackTrace);
+      _logger.error(
+        'Failed to initialize LocalInferenceService',
+        e,
+        stackTrace,
+      );
       // Clean up on failure
       await _cleanup();
       return false;
@@ -93,14 +115,14 @@ class LocalInferenceService {
       const assetFileName = 'assets/models/emotion_model.onnx';
       final rawAssetFile = await rootBundle.load(assetFileName);
       final bytes = rawAssetFile.buffer.asUint8List();
-      
+
       final sessionOptions = OrtSessionOptions();
       sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
       sessionOptions.appendXnnpackProvider();
       sessionOptions.appendCPUProvider(CPUFlags.useNone);
       _emotionSession = OrtSession.fromBuffer(bytes, sessionOptions);
       sessionOptions.release();
-      
+
       _logger.info('Emotion model loaded successfully');
     } catch (e) {
       _logger.error('Failed to load emotion model: $e');
@@ -114,14 +136,14 @@ class LocalInferenceService {
       const assetFileName = 'assets/models/age_and_gender_model.onnx';
       final rawAssetFile = await rootBundle.load(assetFileName);
       final bytes = rawAssetFile.buffer.asUint8List();
-      
+
       final sessionOptions = OrtSessionOptions();
       sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
       sessionOptions.appendXnnpackProvider();
       sessionOptions.appendCPUProvider(CPUFlags.useNone);
       _ageGenderSession = OrtSession.fromBuffer(bytes, sessionOptions);
       sessionOptions.release();
-      
+
       _logger.info('Age and gender model loaded successfully');
     } catch (e) {
       _logger.error('Failed to load age and gender model: $e');
@@ -135,14 +157,14 @@ class LocalInferenceService {
       const assetFileName = 'assets/models/language_model.onnx';
       final rawAssetFile = await rootBundle.load(assetFileName);
       final bytes = rawAssetFile.buffer.asUint8List();
-      
+
       final sessionOptions = OrtSessionOptions();
       sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
       sessionOptions.appendXnnpackProvider();
       sessionOptions.appendCPUProvider(CPUFlags.useNone);
       _languageSession = OrtSession.fromBuffer(bytes, sessionOptions);
       sessionOptions.release();
-      
+
       _logger.info('Language model loaded successfully');
     } catch (e) {
       _logger.error('Failed to load language model: $e');
@@ -177,7 +199,7 @@ class LocalInferenceService {
   /// Process audio file with FFmpeg and extract raw audio data
   Future<Float32List?> _processAudioWithFFmpeg(String inputPath) async {
     String? outputPath;
-    
+
     try {
       if (!_isSupportedFormat(inputPath)) {
         _logger.error('Unsupported audio format: ${path.extension(inputPath)}');
@@ -185,7 +207,7 @@ class LocalInferenceService {
       }
 
       outputPath = _getTempAudioPath(inputPath);
-      
+
       // FFmpeg command to:
       // - Convert to raw PCM format (no headers)
       // - Resample to 16kHz
@@ -193,7 +215,8 @@ class LocalInferenceService {
       // - Normalize audio levels
       // - Limit duration to 2 minutes
       // - Output as 32-bit float PCM (little-endian)
-      final command = '-i "$inputPath" -t ${_maxDurationSeconds.toString()} -ar ${_targetSampleRate.toString()} -ac 1 -f f32le -acodec pcm_f32le -y "$outputPath"';
+      final command =
+          '-i "$inputPath" -t ${_maxDurationSeconds.toString()} -ar ${_targetSampleRate.toString()} -ac 1 -f f32le -acodec pcm_f32le -y "$outputPath"';
 
       _logger.debug('Executing FFmpeg command: $command');
 
@@ -202,7 +225,7 @@ class LocalInferenceService {
 
       if (ReturnCode.isSuccess(returnCode)) {
         _logger.info('Audio processing completed successfully');
-        
+
         // Read the raw PCM data
         final audioData = await _readRawPCMFile(outputPath);
         return audioData;
@@ -231,6 +254,24 @@ class LocalInferenceService {
     }
   }
 
+  Future<int?> _getSampleRate(String inputPath) async {
+    final session = await FFmpegKit.execute(
+      '-v error -select_streams a:0 -show_entries stream=sample_rate -of default=noprint_wrappers=1:nokey=1 "$inputPath"',
+    );
+
+    final returnCode = await session.getReturnCode();
+    if (ReturnCode.isSuccess(returnCode)) {
+      final output = (await session.getOutput())?.trim();
+      return int.tryParse(output ?? '');
+    } else {
+      final error = (await session.getAllLogs())
+          .map((log) => log.getMessage())
+          .join('\n');
+      _logger.warning('Failed to get sample rate: $error');
+      return null;
+    }
+  }
+
   /// Read raw PCM float32 file and convert to Float32List
   Future<Float32List?> _readRawPCMFile(String pcmPath) async {
     try {
@@ -241,12 +282,12 @@ class LocalInferenceService {
       }
 
       final audioBytes = await file.readAsBytes();
-      
+
       // Convert bytes to float32 array
       // Each float32 is 4 bytes (little-endian)
       final byteData = ByteData.sublistView(Uint8List.fromList(audioBytes));
       final audioSamples = <double>[];
-      
+
       for (int i = 0; i < audioBytes.length; i += 4) {
         if (i + 3 < audioBytes.length) {
           final floatValue = byteData.getFloat32(i, Endian.little);
@@ -263,7 +304,7 @@ class LocalInferenceService {
           maxAbsValue = absValue;
         }
       }
-      
+
       // Normalize by dividing by max absolute value (avoid division by zero)
       if (maxAbsValue > 0.0) {
         for (int i = 0; i < audioSamples.length; i++) {
@@ -274,9 +315,10 @@ class LocalInferenceService {
         _logger.warning('Audio contains only silence, skipping normalization');
       }
 
-      _logger.info('Audio samples extracted and normalized: ${audioSamples.length} samples');
+      _logger.info(
+        'Audio samples extracted and normalized: ${audioSamples.length} samples',
+      );
       return Float32List.fromList(audioSamples);
-      
     } catch (e, stackTrace) {
       _logger.error('Error reading PCM file', e, stackTrace);
       return null;
@@ -304,7 +346,6 @@ class LocalInferenceService {
 
       _logger.info('Audio preprocessing completed successfully');
       return audioData;
-      
     } catch (e, stackTrace) {
       _logger.error('Error in audio preprocessing', e, stackTrace);
       return null;
@@ -321,49 +362,60 @@ class LocalInferenceService {
     OrtValueTensor? inputTensor;
     OrtRunOptions? runOptions;
     List<OrtValue?>? outputs;
-    
+
     try {
       final inputShape = [1, audioData.length];
-      
+
       // Create input tensor
-      inputTensor = OrtValueTensor.createTensorWithDataList(audioData, inputShape);
+      inputTensor = OrtValueTensor.createTensorWithDataList(
+        audioData,
+        inputShape,
+      );
       final inputs = {'input_values': inputTensor};
-      
+
       // Create run options
       runOptions = OrtRunOptions();
-      
+
       // Run inference
       outputs = await _emotionSession!.runAsync(runOptions, inputs);
-      
+
       if (outputs == null || outputs.isEmpty) {
         _logger.error('No outputs from emotion model');
         return null;
       }
-      
+
       // Get logits output
       final logitsOutput = outputs[0];
       if (logitsOutput == null) {
         _logger.error('Logits output is null');
         return null;
       }
-      
+
       final logitsData = logitsOutput.value as List<List<double>>;
       final logits = logitsData[0]; // Assuming batch size of 1
-      
+
       final emotionLabels = [
-        'angry', 'calms', 'disgust', 'fearful',
-        'happy', 'neutral', 'sad', 'surprised'
+        'angry',
+        'calms',
+        'disgust',
+        'fearful',
+        'happy',
+        'neutral',
+        'sad',
+        'surprised',
       ];
-      
+
       // Apply softmax to get probabilities
       final emotionProbs = _applySoftmax(logits, emotionLabels);
-      
+
       final topEmotion = emotionProbs.entries.reduce(
         (a, b) => a.value > b.value ? a : b,
       );
-      
-      _logger.info('Emotion prediction completed: ${topEmotion.key} (${topEmotion.value.toStringAsFixed(3)})');
-      
+
+      _logger.info(
+        'Emotion prediction completed: ${topEmotion.key} (${topEmotion.value.toStringAsFixed(3)})',
+      );
+
       return EmotionPrediction(
         predictedEmotion: topEmotion.key,
         confidence: topEmotion.value,
@@ -390,43 +442,46 @@ class LocalInferenceService {
     OrtValueTensor? inputTensor;
     OrtRunOptions? runOptions;
     List<OrtValue?>? outputs;
-    
+
     try {
       final inputShape = [1, audioData.length];
-      
+
       // Create input tensor
-      inputTensor = OrtValueTensor.createTensorWithDataList(audioData, inputShape);
+      inputTensor = OrtValueTensor.createTensorWithDataList(
+        audioData,
+        inputShape,
+      );
       final inputs = {'signal': inputTensor};
-      
+
       // Create run options
       runOptions = OrtRunOptions();
-      
+
       // Run inference
       outputs = await _ageGenderSession!.runAsync(runOptions, inputs);
-      
+
       if (outputs == null || outputs.length < 2) {
         _logger.error('Insufficient outputs from age and gender model');
         return null;
       }
-      
+
       // Get age logits (first output)
       final ageOutput = outputs[1];
       if (ageOutput == null) {
         _logger.error('Age output is null');
         return null;
       }
-      
+
       // Get gender logits (second output)
       final genderOutput = outputs[2];
       if (genderOutput == null) {
         _logger.error('Gender output is null');
         return null;
       }
-      
+
       // Process age prediction (regression output - single value)
       final ageData = ageOutput.value;
       double predictedAge;
-      
+
       if (ageData is List<List<double>>) {
         predictedAge = ageData[0][0] * 100; // Batch size 1, single output
       } else if (ageData is List<double>) {
@@ -435,21 +490,21 @@ class LocalInferenceService {
         _logger.error('Unexpected age output format: ${ageData.runtimeType}');
         return null;
       }
-      
+
       // Process gender prediction (classification output)
       final genderData = genderOutput.value as List<List<double>>;
       final genderLogits = genderData[0]; // Assuming batch size of 1
-      
+
       final genderLabels = ['female', 'male', 'child'];
-      
+
       // Apply softmax to get gender probabilities
       final genderProbs = _applySoftmax(genderLogits, genderLabels);
-      
+
       // Find the top gender prediction
       final topGender = genderProbs.entries.reduce(
         (a, b) => a.value > b.value ? a : b,
       );
-      
+
       // Map gender labels to expected format (M/F/C)
       String mappedGender;
       switch (topGender.key.toLowerCase()) {
@@ -465,16 +520,18 @@ class LocalInferenceService {
         default:
           mappedGender = 'M'; // Default fallback
       }
-      
+
       // Create mapped probabilities with M/F/C keys
       final mappedGenderProbs = <String, double>{
         'F': genderProbs['female'] ?? 0.0,
         'M': genderProbs['male'] ?? 0.0,
         'C': genderProbs['child'] ?? 0.0,
       };
-      
-      _logger.info('Age and gender prediction completed: Age=${predictedAge.toStringAsFixed(1)}, Gender=$mappedGender (${topGender.value.toStringAsFixed(3)})');
-      
+
+      _logger.info(
+        'Age and gender prediction completed: Age=${predictedAge.toStringAsFixed(1)}, Gender=$mappedGender (${topGender.value.toStringAsFixed(3)})',
+      );
+
       return AgeGenderPrediction(
         age: AgePrediction(predictedAge: predictedAge),
         gender: GenderPrediction(
@@ -504,45 +561,50 @@ class LocalInferenceService {
     OrtValueTensor? inputTensor;
     OrtRunOptions? runOptions;
     List<OrtValue?>? outputs;
-    
+
     try {
       final inputShape = [audioData.length]; // Variable length audio input
-      
+
       // Create input tensor
-      inputTensor = OrtValueTensor.createTensorWithDataList(audioData, inputShape);
+      inputTensor = OrtValueTensor.createTensorWithDataList(
+        audioData,
+        inputShape,
+      );
       final inputs = {'signal': inputTensor}; // Adjust input name if needed
-      
+
       // Create run options
       runOptions = OrtRunOptions();
-      
+
       // Run inference
       outputs = await _languageSession!.runAsync(runOptions, inputs);
-      
+
       if (outputs == null || outputs.length < 3) {
         _logger.error('Insufficient outputs from language model');
         return null;
       }
-      
+
       // Get outputs - based on your Python model outputs
       final predictedClassOutput = outputs[0];
       final confidenceOutput = outputs[1];
       final probabilitiesOutput = outputs[2];
-      
-      if (predictedClassOutput == null || confidenceOutput == null || probabilitiesOutput == null) {
+
+      if (predictedClassOutput == null ||
+          confidenceOutput == null ||
+          probabilitiesOutput == null) {
         _logger.error('One or more language model outputs are null');
         return null;
       }
-      
+
       // Extract prediction results
       final predictedClassData = predictedClassOutput.value;
       final confidenceData = confidenceOutput.value;
       final probabilitiesData = probabilitiesOutput.value;
-      
+
       // Handle different output formats with robust type conversion
       int predictedIndex;
       double confidence;
       List<double> probabilities;
-      
+
       // Parse predicted class index
       if (predictedClassData is List) {
         final firstElement = predictedClassData[0];
@@ -556,7 +618,7 @@ class LocalInferenceService {
       } else {
         predictedIndex = (predictedClassData as num).round();
       }
-      
+
       // Parse confidence value
       if (confidenceData is List) {
         final firstElement = confidenceData[0];
@@ -564,7 +626,7 @@ class LocalInferenceService {
       } else {
         confidence = (confidenceData as num).toDouble();
       }
-      
+
       // Parse probabilities with robust type handling
       if (probabilitiesData is List<List<dynamic>>) {
         // Handle nested list with dynamic types
@@ -576,43 +638,57 @@ class LocalInferenceService {
         probabilities = probabilitiesData;
       } else if (probabilitiesData is List<dynamic>) {
         // Handle flat list with dynamic types
-        probabilities = probabilitiesData.map((e) => (e as num).toDouble()).toList();
+        probabilities =
+            probabilitiesData.map((e) => (e as num).toDouble()).toList();
       } else {
-        _logger.error('Unexpected probabilities format: ${probabilitiesData.runtimeType}');
+        _logger.error(
+          'Unexpected probabilities format: ${probabilitiesData.runtimeType}',
+        );
         _logger.debug('Probabilities data: $probabilitiesData');
         return null;
       }
-      
+
       // Get predicted language
-      final predictedLanguage = predictedIndex < _languageVocabulary.length 
-          ? _languageVocabulary[predictedIndex]
-          : 'other';
-      
+      final predictedLanguage =
+          predictedIndex < _languageVocabulary.length
+              ? _languageVocabulary[predictedIndex]
+              : 'other';
+
       // Create top languages list from probabilities
       final languageProbPairs = <MapEntry<String, double>>[];
-      for (int i = 0; i < probabilities.length && i < _languageVocabulary.length; i++) {
-        languageProbPairs.add(MapEntry(_languageVocabulary[i], probabilities[i] * 100));
+      for (
+        int i = 0;
+        i < probabilities.length && i < _languageVocabulary.length;
+        i++
+      ) {
+        languageProbPairs.add(
+          MapEntry(_languageVocabulary[i], probabilities[i] * 100),
+        );
       }
-      
+
       // Sort by probability (descending) and take top 5
       languageProbPairs.sort((a, b) => b.value.compareTo(a.value));
-      
-      final topLanguages = languageProbPairs
-          .take(5)
-          .map((entry) => LanguagePrediction(
-                languageCode: _mapLanguageToCode(entry.key),
-                probability: entry.value,
-              ))
-          .toList();
-      
-      _logger.info('Language prediction completed: ${predictedLanguage} (${confidence.toStringAsFixed(3)})');
-      
+
+      final topLanguages =
+          languageProbPairs
+              .take(5)
+              .map(
+                (entry) => LanguagePrediction(
+                  languageCode: _mapLanguageToCode(entry.key),
+                  probability: entry.value,
+                ),
+              )
+              .toList();
+
+      _logger.info(
+        'Language prediction completed: ${predictedLanguage} (${confidence.toStringAsFixed(3)})',
+      );
+
       return NationalityPrediction(
         predictedLanguage: _mapLanguageToCode(predictedLanguage),
         confidence: confidence,
         topLanguages: topLanguages,
       );
-      
     } catch (e, stackTrace) {
       _logger.error('Error during language prediction', e, stackTrace);
       return null;
@@ -627,22 +703,22 @@ class LocalInferenceService {
   /// Map internal language names to language codes used in your LanguageMap
   String _mapLanguageToCode(String languageName) {
     const languageCodeMap = {
-      'chinese': 'cmn',      // Mandarin Chinese
-      'english': 'eng',      // English
-      'french': 'fra',       // French  
-      'german': 'deu',       // German
-      'indonesian': 'ind',   // Indonesian
-      'italian': 'ita',      // Italian
-      'japanese': 'jpn',     // Japanese
-      'korean': 'kor',       // Korean
-      'portuguese': 'por',   // Portuguese
-      'russian': 'rus',      // Russian
-      'spanish': 'spa',      // Spanish
-      'turkish': 'tur',      // Turkish
-      'vietnamese': 'vie',   // Vietnamese
-      'other': 'unk',        // Unknown language fallback
+      'chinese': 'cmn', // Mandarin Chinese
+      'english': 'eng', // English
+      'french': 'fra', // French
+      'german': 'deu', // German
+      'indonesian': 'ind', // Indonesian
+      'italian': 'ita', // Italian
+      'japanese': 'jpn', // Japanese
+      'korean': 'kor', // Korean
+      'portuguese': 'por', // Portuguese
+      'russian': 'rus', // Russian
+      'spanish': 'spa', // Spanish
+      'turkish': 'tur', // Turkish
+      'vietnamese': 'vie', // Vietnamese
+      'other': 'unk', // Unknown language fallback
     };
-    
+
     return languageCodeMap[languageName.toLowerCase()] ?? 'unk';
   }
 
@@ -650,10 +726,10 @@ class LocalInferenceService {
   Map<String, double> _applySoftmax(List<double> logits, List<String> labels) {
     final probs = <String, double>{};
     final expValues = <double>[];
-    
+
     // Find max for numerical stability
     double maxLogit = logits.reduce(dart_math.max);
-    
+
     // Calculate exp values
     double sumExp = 0.0;
     for (int i = 0; i < logits.length && i < labels.length; i++) {
@@ -661,12 +737,12 @@ class LocalInferenceService {
       expValues.add(exp);
       sumExp += exp;
     }
-    
+
     // Normalize to get probabilities
     for (int i = 0; i < expValues.length; i++) {
       probs[labels[i]] = expValues[i] / sumExp;
     }
-    
+
     return probs;
   }
 
@@ -700,7 +776,7 @@ class LocalInferenceService {
         _logger.error('Failed to predict age and gender');
         return null;
       }
-      
+
       // Run language prediction
       final nationality = await _predictLanguage(audioData);
       if (nationality == null) {
@@ -723,10 +799,11 @@ class LocalInferenceService {
   }
 
   /// Check if local inference is available
-  bool get isAvailable => _isInitialized && 
-                          _emotionSession != null && 
-                          _ageGenderSession != null && 
-                          _languageSession != null;
+  bool get isAvailable =>
+      _isInitialized &&
+      _emotionSession != null &&
+      _ageGenderSession != null &&
+      _languageSession != null;
 
   /// Get available models
   Map<String, bool> get availableModels => {
@@ -743,13 +820,13 @@ class LocalInferenceService {
     try {
       _emotionSession?.release();
       _emotionSession = null;
-      
+
       _ageGenderSession?.release();
       _ageGenderSession = null;
-      
+
       _languageSession?.release();
       _languageSession = null;
-      
+
       if (_isInitialized) {
         OrtEnv.instance.release();
       }
