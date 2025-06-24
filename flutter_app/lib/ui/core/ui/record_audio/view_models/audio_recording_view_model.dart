@@ -42,8 +42,8 @@ class AudioRecordingViewModel extends ChangeNotifier {
           ..androidEncoder = AndroidEncoder.aac
           ..androidOutputFormat = AndroidOutputFormat.mpeg4
           ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
-          ..sampleRate = 44000// 44kHz sample rate;
-          ..bitRate = 128000; // 128 kbps bitrate
+          ..sampleRate = 48000// 44kHz sample rate;
+          ..bitRate = 320000; // 128 kbps bitrate
 
     // Set up timer
     remainingSeconds = MAX_RECORDING_DURATION;
