@@ -254,25 +254,7 @@ class LocalInferenceService {
     }
   }
 
-  Future<int?> _getSampleRate(String inputPath) async {
-    final session = await FFmpegKit.execute(
-      '-v error -select_streams a:0 -show_entries stream=sample_rate -of default=noprint_wrappers=1:nokey=1 "$inputPath"',
-    );
-
-    final returnCode = await session.getReturnCode();
-    if (ReturnCode.isSuccess(returnCode)) {
-      final output = (await session.getOutput())?.trim();
-      return int.tryParse(output ?? '');
-    } else {
-      final error = (await session.getAllLogs())
-          .map((log) => log.getMessage())
-          .join('\n');
-      _logger.warning('Failed to get sample rate: $error');
-      return null;
-    }
-  }
-
-  /// Read raw PCM float32 file and convert to Float32List
+  /// Read raw PCM float32 file and convert to Float32List (no normalization)
   Future<Float32List?> _readRawPCMFile(String pcmPath) async {
     try {
       final file = File(pcmPath);
@@ -295,34 +277,38 @@ class LocalInferenceService {
         }
       }
 
-      // Normalize audio like in the Python code
-      // Find the maximum absolute value for normalization
-      double maxAbsValue = 0.0;
-      for (final sample in audioSamples) {
-        final absValue = sample.abs();
-        if (absValue > maxAbsValue) {
-          maxAbsValue = absValue;
-        }
-      }
-
-      // Normalize by dividing by max absolute value (avoid division by zero)
-      if (maxAbsValue > 0.0) {
-        for (int i = 0; i < audioSamples.length; i++) {
-          audioSamples[i] = audioSamples[i] / maxAbsValue;
-        }
-        _logger.debug('Audio normalized with max absolute value: $maxAbsValue');
-      } else {
-        _logger.warning('Audio contains only silence, skipping normalization');
-      }
-
       _logger.info(
-        'Audio samples extracted and normalized: ${audioSamples.length} samples',
+        'Raw audio samples extracted: ${audioSamples.length} samples',
       );
       return Float32List.fromList(audioSamples);
     } catch (e, stackTrace) {
       _logger.error('Error reading PCM file', e, stackTrace);
       return null;
     }
+  }
+
+  /// Normalize audio signal to [-1, 1] range using the same algorithm as tf_normalize_signal
+  Float32List _normalizeSignal(Float32List audioData) {
+    // Find the maximum absolute value for normalization
+    double maxAbsValue = 0.0;
+    for (final sample in audioData) {
+      final absValue = sample.abs();
+      if (absValue > maxAbsValue) {
+        maxAbsValue = absValue;
+      }
+    }
+
+    // Calculate gain: 1.0 / (max_abs + 1e-9)
+    final gain = 1.0 / (maxAbsValue + 1e-9);
+    
+    // Apply gain to normalize signal
+    final normalizedSamples = <double>[];
+    for (final sample in audioData) {
+      normalizedSamples.add(sample * gain);
+    }
+
+    _logger.debug('Audio normalized with gain: $gain (max abs: $maxAbsValue)');
+    return Float32List.fromList(normalizedSamples);
   }
 
   /// Enhanced audio preprocessing using FFmpeg
@@ -352,23 +338,26 @@ class LocalInferenceService {
     }
   }
 
-  /// Run emotion prediction on preprocessed audio data
+  /// Run emotion prediction on preprocessed audio data (requires normalization)
   Future<EmotionPrediction?> _predictEmotion(Float32List audioData) async {
     if (_emotionSession == null) {
       _logger.error('Emotion model not loaded');
       return null;
     }
 
+    // Normalize audio for wav2vec2 emotion model
+    final normalizedAudio = _normalizeSignal(audioData);
+
     OrtValueTensor? inputTensor;
     OrtRunOptions? runOptions;
     List<OrtValue?>? outputs;
 
     try {
-      final inputShape = [1, audioData.length];
+      final inputShape = [1, normalizedAudio.length];
 
-      // Create input tensor
+      // Create input tensor with normalized audio
       inputTensor = OrtValueTensor.createTensorWithDataList(
-        audioData,
+        normalizedAudio,
         inputShape,
       );
       final inputs = {'input_values': inputTensor};
@@ -432,23 +421,26 @@ class LocalInferenceService {
     }
   }
 
-  /// Run age and gender prediction on preprocessed audio data
+  /// Run age and gender prediction on preprocessed audio data (requires normalization)
   Future<AgeGenderPrediction?> _predictAgeGender(Float32List audioData) async {
     if (_ageGenderSession == null) {
       _logger.error('Age and gender model not loaded');
       return null;
     }
 
+    // Normalize audio for wav2vec2 age/gender model
+    final normalizedAudio = _normalizeSignal(audioData);
+
     OrtValueTensor? inputTensor;
     OrtRunOptions? runOptions;
     List<OrtValue?>? outputs;
 
     try {
-      final inputShape = [1, audioData.length];
+      final inputShape = [1, normalizedAudio.length];
 
-      // Create input tensor
+      // Create input tensor with normalized audio
       inputTensor = OrtValueTensor.createTensorWithDataList(
-        audioData,
+        normalizedAudio,
         inputShape,
       );
       final inputs = {'signal': inputTensor};
@@ -551,13 +543,14 @@ class LocalInferenceService {
     }
   }
 
-  /// Run language identification prediction on preprocessed audio data
+  /// Run language identification prediction on preprocessed audio data (NO normalization)
   Future<NationalityPrediction?> _predictLanguage(Float32List audioData) async {
     if (_languageSession == null) {
       _logger.error('Language model not loaded');
       return null;
     }
 
+    // Use raw audio data (no normalization) for language model
     OrtValueTensor? inputTensor;
     OrtRunOptions? runOptions;
     List<OrtValue?>? outputs;
@@ -565,7 +558,7 @@ class LocalInferenceService {
     try {
       final inputShape = [audioData.length]; // Variable length audio input
 
-      // Create input tensor
+      // Create input tensor with raw (unnormalized) audio
       inputTensor = OrtValueTensor.createTensorWithDataList(
         audioData,
         inputShape,
@@ -662,7 +655,7 @@ class LocalInferenceService {
         i++
       ) {
         languageProbPairs.add(
-          MapEntry(_languageVocabulary[i], probabilities[i] * 100),
+          MapEntry(_languageVocabulary[i], probabilities[i]),
         );
       }
 
@@ -756,28 +749,28 @@ class LocalInferenceService {
     try {
       _logger.info('Starting local inference for: $audioFilePath');
 
-      // Preprocess audio
+      // Preprocess audio (raw, unnormalized)
       final audioData = await _preprocessAudio(audioFilePath);
       if (audioData == null) {
         _logger.error('Failed to preprocess audio');
         return null;
       }
 
-      // Run emotion prediction
+      // Run emotion prediction (uses normalized audio)
       final emotion = await _predictEmotion(audioData);
       if (emotion == null) {
         _logger.error('Failed to predict emotion');
         return null;
       }
 
-      // Run age and gender prediction
+      // Run age and gender prediction (uses normalized audio)
       final demographics = await _predictAgeGender(audioData);
       if (demographics == null) {
         _logger.error('Failed to predict age and gender');
         return null;
       }
 
-      // Run language prediction
+      // Run language prediction (uses raw audio)
       final nationality = await _predictLanguage(audioData);
       if (nationality == null) {
         _logger.error('Failed to predict language');
