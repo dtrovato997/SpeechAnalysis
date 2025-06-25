@@ -48,14 +48,6 @@ class _HomePageState extends State<HomePage> {
         scrolledUnderElevation: 0.0,
         backgroundColor: colorScheme.surfaceBright,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings, color: colorScheme.primary),
-            onPressed: () {
-              // Handle settings button press
-            },
-          ),
-        ],
       ),
       backgroundColor: colorScheme.surfaceBright,
 
