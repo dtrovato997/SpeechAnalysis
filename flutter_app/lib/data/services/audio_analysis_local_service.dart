@@ -317,19 +317,17 @@ class LocalInferenceService {
       return null;
     }
 
-    // Normalize audio for wav2vec2 emotion model
-    final normalizedAudio = _normalizeSignal(audioData);
 
     OrtValueTensor? inputTensor;
     OrtRunOptions? runOptions;
     List<OrtValue?>? outputs;
 
     try {
-      final inputShape = [1, normalizedAudio.length];
+      final inputShape = [1, audioData.length];
 
       // Create input tensor with normalized audio
       inputTensor = OrtValueTensor.createTensorWithDataList(
-        normalizedAudio,
+        audioData,
         inputShape,
       );
       final inputs = {'input_values': inputTensor};
@@ -400,19 +398,17 @@ class LocalInferenceService {
       return null;
     }
 
-    // Normalize audio for wav2vec2 age/gender model
-    final normalizedAudio = _normalizeSignal(audioData);
 
     OrtValueTensor? inputTensor;
     OrtRunOptions? runOptions;
     List<OrtValue?>? outputs;
 
     try {
-      final inputShape = [1, normalizedAudio.length];
+      final inputShape = [1, audioData.length];
 
       // Create input tensor with normalized audio
       inputTensor = OrtValueTensor.createTensorWithDataList(
-        normalizedAudio,
+        audioData,
         inputShape,
       );
       final inputs = {'signal': inputTensor};
@@ -515,7 +511,6 @@ class LocalInferenceService {
     }
   }
 
-  /// Run language identification prediction on preprocessed audio data (NO normalization)
   Future<NationalityPrediction?> _predictLanguage(Float32List audioData) async {
     if (_languageSession == null) {
       _logger.error('Language model not loaded');
