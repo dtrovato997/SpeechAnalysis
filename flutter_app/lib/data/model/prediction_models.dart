@@ -1,3 +1,5 @@
+
+
 class AgePrediction {
   final double predictedAge;
 
@@ -149,19 +151,62 @@ class NationalityPrediction {
   }
 }
 
+class EmotionPrediction {
+  final String predictedEmotion;
+  final double confidence;
+  final Map<String, double> allEmotions;
+
+  EmotionPrediction({
+    required this.predictedEmotion,
+    required this.confidence,
+    required this.allEmotions,
+  });
+
+  factory EmotionPrediction.fromJson(Map<String, dynamic> json) {
+    final emotionsMap = <String, double>{};
+    final emotions = json['all_emotions'] as Map<String, dynamic>;
+    
+    emotions.forEach((key, value) {
+      emotionsMap[key] = (value as num).toDouble();
+    });
+
+    return EmotionPrediction(
+      predictedEmotion: json['predicted_emotion'] as String,
+      confidence: (json['confidence'] as num).toDouble(),
+      allEmotions: emotionsMap,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'predicted_emotion': predictedEmotion,
+      'confidence': confidence,
+      'all_emotions': allEmotions,
+    };
+  }
+
+  /// Convert to AudioAnalysis format
+  Map<String, double> toAudioAnalysisFormat() {
+    return Map<String, double>.from(allEmotions);
+  }
+}
+
 class CompletePrediction {
   final AgeGenderPrediction demographics;
   final NationalityPrediction nationality;
+  final EmotionPrediction emotion;
 
   CompletePrediction({
     required this.demographics,
     required this.nationality,
+    required this.emotion,
   });
 
   factory CompletePrediction.fromJson(Map<String, dynamic> json) {
     return CompletePrediction(
       demographics: AgeGenderPrediction.fromJson(json['demographics']),
       nationality: NationalityPrediction.fromJson(json['nationality']),
+      emotion: EmotionPrediction.fromJson(json['emotion']),
     );
   }
 
@@ -169,6 +214,7 @@ class CompletePrediction {
     return {
       'demographics': demographics.toJson(),
       'nationality': nationality.toJson(),
+      'emotion': emotion.toJson(),
     };
   }
 }

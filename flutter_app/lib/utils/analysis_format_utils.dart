@@ -1,3 +1,4 @@
+// lib/utils/analysis_format_utils.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/utils/language_map.dart';
 
@@ -6,8 +7,21 @@ class AnalysisFormatUtils {
   static const Map<String, String> genderLabels = {
     'M': 'Male',
     'F': 'Female',
+    'C': 'Child',
+    'CHILD': 'Child',
     'MALE': 'Male',
     'FEMALE': 'Female',
+    'Unknown': 'Unknown',
+  };
+
+  static const Map<String, String> emotionLabels = {
+    'angry': 'Angry',
+    'disgust': 'Disgust',
+    'fear': 'Fear',
+    'happy': 'Happy',
+    'neutral': 'Neutral',
+    'sad': 'Sad',
+    'surprise': 'Surprise',
     'Unknown': 'Unknown',
   };
 
@@ -71,8 +85,9 @@ class AnalysisFormatUtils {
       return 'M';
     } else if (normalizedKey == 'F' || normalizedKey == 'FEMALE' || normalizedKey == 'WOMAN') {
       return 'F';
+    } else if(normalizedKey == "C" || normalizedKey == "CHILD" || normalizedKey == "CFM") {
+      return 'C';
     } else {
-      // Return the original key if no match found
       return normalizedKey;
     }
   }
@@ -98,6 +113,32 @@ class AnalysisFormatUtils {
     );
     
     print('Final nationality result: $result');
+    
+    return result;
+  }
+
+  /// Parse emotion result map and return the most likely one
+  /// e.g. { 'happy': 0.8, 'neutral': 0.15 } → 'Happy'
+  static String parseEmotionResult(Map<String, double>? emotionResult) {
+    if (emotionResult == null || emotionResult.isEmpty) {
+      print('Emotion result is null or empty');
+      return '--';
+    }
+
+    print('Emotion result data: $emotionResult');
+
+    // Find the Map entry with the maximum value
+    final topEntry = emotionResult.entries.reduce(
+      (a, b) => a.value >= b.value ? a : b,
+    );
+
+    print('Top emotion entry: ${topEntry.key} = ${topEntry.value}');
+
+    // Normalize the emotion key and get the display label
+    final normalizedKey = topEntry.key.trim().toLowerCase();
+    final result = emotionLabels[normalizedKey] ?? topEntry.key;
+    
+    print('Final emotion result: $result');
     
     return result;
   }
@@ -130,6 +171,20 @@ class AnalysisFormatUtils {
     return sortedEntries.take(topN).toList();
   }
 
+  /// Get the top N emotion results sorted by confidence
+  static List<MapEntry<String, double>> getTopEmotionResults(
+    Map<String, double>? emotionResult,
+    {int topN = 3}
+  ) {
+    if (emotionResult == null || emotionResult.isEmpty) return [];
+
+    // Sort by confidence (descending) and take top N
+    final sortedEntries = emotionResult.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    
+    return sortedEntries.take(topN).toList();
+  }
+
   /// Get nationality result with confidence percentage
   /// e.g. "Italian (85.2%)"
   static String parseNationalityResultWithConfidence(Map<String, double>? natResult) {
@@ -146,6 +201,21 @@ class AnalysisFormatUtils {
     
     final confidence = (topEntry.value).toStringAsFixed(1);
     return '$languageName ($confidence%)';
+  }
+
+  /// Get emotion result with confidence percentage
+  static String parseEmotionResultWithConfidence(Map<String, double>? emotionResult) {
+    if (emotionResult == null || emotionResult.isEmpty) return '--';
+
+    final topEntry = emotionResult.entries.reduce(
+      (a, b) => a.value >= b.value ? a : b,
+    );
+
+    final normalizedKey = topEntry.key.trim().toLowerCase();
+    final emotionName = emotionLabels[normalizedKey] ?? topEntry.key;
+    
+    final confidence = (topEntry.value * 100).toStringAsFixed(1);
+    return '$emotionName ($confidence%)';
   }
 
   /// Format date in a user-friendly way
@@ -213,6 +283,30 @@ class AnalysisFormatUtils {
   /// Get icon for nationality/language code
   static IconData getNationalityIcon(String code) {
     return Icons.public;
+  }
+
+  /// Get icon for emotion
+  static IconData getEmotionIcon(String emotion) {
+    final normalized = emotion.toLowerCase();
+    
+    switch (normalized) {
+      case 'happy':
+        return Icons.sentiment_very_satisfied;
+      case 'sad':
+        return Icons.sentiment_very_dissatisfied;
+      case 'angry':
+        return Icons.sentiment_dissatisfied;
+      case 'fear':
+        return Icons.sentiment_neutral;
+      case 'surprise':
+        return Icons.sentiment_satisfied;
+      case 'disgust':
+        return Icons.sentiment_dissatisfied;
+      case 'neutral':
+        return Icons.sentiment_neutral;
+      default:
+        return Icons.mood;
+    }
   }
 
   /// Convert sendStatus code to display string

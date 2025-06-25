@@ -1,8 +1,7 @@
-// lib/config/database_config.dart
 
 class DatabaseConfig {
   static const String databaseName = 'SpeechAnalysis.db';
-  static const int databaseVersion = 3; // Incremented version for migration
+  static const int databaseVersion = 4;
 
   // Table names
   static const String analysisTable = 'AudioAnalysis';
@@ -11,7 +10,7 @@ class DatabaseConfig {
 
   // Create table scripts
   static final List<String> createTableScripts = [
-    // Analysis table with separate age and gender fields
+    // Analysis table with separate age, gender, nationality, and emotion fields
     '''
     CREATE TABLE $analysisTable (
       _id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,9 +24,11 @@ class DatabaseConfig {
       AGE_RESULT REAL,
       GENDER_RESULT TEXT,
       NATIONALITY_RESULT TEXT,
+      EMOTION_RESULT TEXT,
       AGE_USER_FEEDBACK INTEGER,
       GENDER_USER_FEEDBACK INTEGER,
-      NATIONALITY_USER_FEEDBACK INTEGER
+      NATIONALITY_USER_FEEDBACK INTEGER,
+      EMOTION_USER_FEEDBACK INTEGER
     )
     ''',
     
@@ -53,6 +54,10 @@ class DatabaseConfig {
 
   /// Migration scripts keyed by target version
   static final Map<int, List<String>> migrationScripts = {
-
+    4: [
+      // Add emotion columns to existing tables
+      'ALTER TABLE $analysisTable ADD COLUMN EMOTION_RESULT TEXT',
+      'ALTER TABLE $analysisTable ADD COLUMN EMOTION_USER_FEEDBACK INTEGER',
+    ],
   };
 }

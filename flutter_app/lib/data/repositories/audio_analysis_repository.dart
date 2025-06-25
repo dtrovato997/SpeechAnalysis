@@ -1,7 +1,9 @@
+// lib/data/repositories/audio_analysis_repository.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/config/database_config.dart';
 import 'package:mobile_speech_recognition/data/repositories/tag_repository.dart';
 import 'package:mobile_speech_recognition/data/services/audio_analysis_api_service.dart';
+import 'package:mobile_speech_recognition/data/services/audio_analysis_local_service.dart';
 import 'package:mobile_speech_recognition/data/services/database_service.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
 import 'package:mobile_speech_recognition/data/services/file_management_service.dart';
@@ -12,6 +14,7 @@ class AudioAnalysisRepository extends ChangeNotifier {
   final TagRepository _tagRepository = TagRepository();
   final FileManagementService _fileManagementService = FileManagementService();
   final AudioAnalysisApiService _apiService = AudioAnalysisApiService();
+  final LocalInferenceService _localInferenceService = LocalInferenceService();
 
   // Constants for send status
   static const int SEND_STATUS_PENDING = 0;
@@ -68,34 +71,31 @@ class AudioAnalysisRepository extends ChangeNotifier {
     notifyListeners();
 
     // Send to server for analysis in the background
-    _sendToServerAsync(updatedAnalysis);
+    _processAudioAsync(updatedAnalysis).then((_) {
+      notifyListeners();
+    });
 
     return updatedAnalysis;
   }
 
   /// Send analysis to server asynchronously and update database with results
-  Future<void> _sendToServerAsync(AudioAnalysis analysis) async {
+  Future<void> _processAudioAsync(AudioAnalysis analysis) async {
     if (analysis.id == null) {
       print('Cannot send analysis without ID');
       return;
     }
 
     try {
-      print('Sending analysis ${analysis.id} to server...');
-      
-      // Check server health first
-      final isServerHealthy = await _apiService.checkServerHealth();
-      if (!isServerHealthy) {
-        throw Exception('Server is not available or models are not loaded');
-      }
+      print('Processing analysis ${analysis.id}...');
 
       // Send audio file for complete prediction
-      final completePrediction = await _apiService.predictAll(analysis.recordingPath);
+      final completePrediction = await _localInferenceService.predictAll(analysis.recordingPath);
       
       if (completePrediction != null) {
-        // Convert to AudioAnalysis format with separate age and gender
+        // Convert to AudioAnalysis format with separate age, gender, nationality, and emotion
         final demographicsResult = completePrediction.demographics.toAudioAnalysisFormat();
         final nationalityResult = completePrediction.nationality.toAudioAnalysisFormat();
+        final emotionResult = completePrediction.emotion.toAudioAnalysisFormat();
         
         // Extract age and gender separately
         final ageResult = demographicsResult['age'] as double?;
@@ -108,6 +108,7 @@ class AudioAnalysisRepository extends ChangeNotifier {
           ageResult: ageResult, 
           genderResult: genderResult,
           nationalityResult: nationalityResult,
+          emotionResult: emotionResult,
           errorMessage: null,
         );
 
@@ -140,7 +141,6 @@ class AudioAnalysisRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-
   Future<void> _updateAnalysisInDatabase(AudioAnalysis analysis) async {
     if (analysis.id == null) return;
 
@@ -171,7 +171,7 @@ class AudioAnalysisRepository extends ChangeNotifier {
     await _updateAnalysisInDatabase(resetAnalysis);
     notifyListeners();
 
-    await _sendToServerAsync(resetAnalysis);
+    await _processAudioAsync(resetAnalysis);
   }
 
   Future<void> saveAnalysis(AudioAnalysis analysis) async {
@@ -297,6 +297,6 @@ class AudioAnalysisRepository extends ChangeNotifier {
       throw Exception('Analysis not found');
     }
 
-    await _sendToServerAsync(analysis);
+    await _processAudioAsync(analysis);
   }
 }

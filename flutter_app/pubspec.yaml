@@ -10,6 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
   google_fonts: ^6.2.1
+  ffmpeg_kit_flutter_new: ^1.6.1
+  path: ^1.8.3
+  onnxruntime: ^1.4.1
   sqflite: ^2.4.2
   intl: ^0.19.0
   flutter_carousel_widget: ^3.1.0
@@ -31,3 +34,5 @@ dev_dependencies:
   
 flutter:
   uses-material-design: true
+  assets:
+    - assets/models/

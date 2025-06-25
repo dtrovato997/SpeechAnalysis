@@ -1,3 +1,4 @@
+// lib/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -469,8 +470,8 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     // Check if we have results
     if (analysis?.ageResult == null &&
         (analysis?.genderResult == null || analysis!.genderResult!.isEmpty) &&
-        (analysis?.nationalityResult == null ||
-            analysis!.nationalityResult!.isEmpty)) {
+        (analysis?.nationalityResult == null || analysis!.nationalityResult!.isEmpty) &&
+        (analysis?.emotionResult == null || analysis!.emotionResult!.isEmpty)) {
       return const SizedBox.shrink();
     }
 
@@ -478,23 +479,32 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     final ageText = AnalysisFormatUtils.parseAgeResult(analysis?.ageResult);
     final genderText = AnalysisFormatUtils.parseGenderResult(analysis?.genderResult);
     final nationalityText = AnalysisFormatUtils.parseNationalityResult(analysis?.nationalityResult);
+    final emotionText = AnalysisFormatUtils.parseEmotionResult(analysis?.emotionResult);
 
     // Get confidence values for display
     double? genderConfidence;
     double? nationalityConfidence;
+    double? emotionConfidence;
 
     if (analysis?.genderResult != null && analysis!.genderResult!.isNotEmpty) {
       final maxGenderEntry = analysis.genderResult!.entries.reduce(
         (a, b) => a.value > b.value ? a : b,
       );
-      genderConfidence = maxGenderEntry.value / 100.0; // Convert percentage to decimal
+      genderConfidence = maxGenderEntry.value;
     }
 
     if (analysis?.nationalityResult != null && analysis!.nationalityResult!.isNotEmpty) {
       final maxNationalityEntry = analysis.nationalityResult!.entries.reduce(
         (a, b) => a.value > b.value ? a : b,
       );
-      nationalityConfidence = maxNationalityEntry.value / 100.0; // Convert percentage to decimal
+      nationalityConfidence = maxNationalityEntry.value;
+    }
+
+    if (analysis?.emotionResult != null && analysis!.emotionResult!.isNotEmpty) {
+      final maxEmotionEntry = analysis.emotionResult!.entries.reduce(
+        (a, b) => a.value > b.value ? a : b,
+      );
+      emotionConfidence = maxEmotionEntry.value;
     }
 
     return Card(
@@ -525,7 +535,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                     context: context,
                     colorScheme: colorScheme,
                     textTheme: textTheme,
-                    title: 'Età',
+                    title: 'Age',
                     confidence: 1.0, // Age is regression, so confidence is not applicable
                     result: ageText,
                     icon: Icons.cake,
@@ -541,7 +551,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                     context: context,
                     colorScheme: colorScheme,
                     textTheme: textTheme,
-                    title: 'Genere',
+                    title: 'Gender',
                     confidence: genderConfidence ?? 0.0,
                     result: genderText,
                     icon: AnalysisFormatUtils.getGenderIcon(genderText),
@@ -556,10 +566,25 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                     context: context,
                     colorScheme: colorScheme,
                     textTheme: textTheme,
-                    title: 'Nazionalità',
+                    title: 'Nationality',
                     confidence: nationalityConfidence ?? 0.0,
                     result: nationalityText,
                     icon: AnalysisFormatUtils.getNationalityIcon(''),
+                  ),
+
+                if (emotionText != '--')
+                  const SizedBox(height: 12),
+
+                // Emotion Card
+                if (emotionText != '--')
+                  _buildResultCard(
+                    context: context,
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
+                    title: 'Emotion',
+                    confidence: emotionConfidence ?? 0.0,
+                    result: emotionText,
+                    icon: AnalysisFormatUtils.getEmotionIcon(emotionText),
                   ),
               ],
             ),
@@ -782,7 +807,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
               Row(
                 children: [
                   Text(
-                    'Confidenza: ',
+                    'Confidence: ',
                     style: textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
