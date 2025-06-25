@@ -4,6 +4,7 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
 import 'package:mobile_speech_recognition/data/repositories/tag_repository.dart';
+import 'package:mobile_speech_recognition/data/services/audio_analysis_local_service.dart';
 import 'package:mobile_speech_recognition/services/exception_handler_service.dart';
 import 'package:mobile_speech_recognition/services/logger_service.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/home_page/widgets/home_page_screen.dart';
@@ -46,6 +47,10 @@ Future<void> initializeApp() async {
       DeviceOrientation.portraitUp,
     ]);
 
+    // Initialize audio analysis local service
+    final inferenceService = LocalInferenceService();
+    await inferenceService.initialize();
+  
     // Initialize logger first
     await logger.initialize();
     logger.info('🚀 Starting Speech Recognition App');

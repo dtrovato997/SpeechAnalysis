@@ -89,7 +89,6 @@ class AudioAnalysisRepository extends ChangeNotifier {
       print('Processing analysis ${analysis.id}...');
 
       // Send audio file for complete prediction
-      await _localInferenceService.initialize();
       final completePrediction = await _localInferenceService.predictAll(analysis.recordingPath);
       
       if (completePrediction != null) {

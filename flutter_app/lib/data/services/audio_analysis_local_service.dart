@@ -6,10 +6,20 @@ import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:path/path.dart' as path;
 import 'package:onnxruntime/onnxruntime.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:mobile_speech_recognition/data/model/prediction_models.dart';
 import 'package:mobile_speech_recognition/services/logger_service.dart';
 
-/// Service for running local ONNX model inference on audio files
+/// Data class for passing model loading parameters to compute function
+class ModelLoadingParams {
+  final String modelName;
+  final Uint8List modelBytes;
+  
+  ModelLoadingParams(this.modelName, this.modelBytes);
+}
+
+/// Service for running local ONNX model inference
+/// Model loading happens in background threads, everything else on main thread
 class LocalInferenceService {
   static final LocalInferenceService _instance =
       LocalInferenceService._internal();
@@ -18,8 +28,14 @@ class LocalInferenceService {
 
   final LoggerService _logger = LoggerService();
   bool _isInitialized = false;
+  bool _modelsLoaded = false;
 
-  // ONNX Runtime sessions
+  // Model bytes (loaded at startup)
+  Uint8List? _emotionModelBytes;
+  Uint8List? _ageGenderModelBytes;
+  Uint8List? _languageModelBytes;
+
+  // ONNX Runtime sessions (loaded on first use)
   OrtSession? _emotionSession;
   OrtSession? _ageGenderSession;
   OrtSession? _languageSession;
@@ -46,7 +62,7 @@ class LocalInferenceService {
     'other',
   ];
 
-  /// Initialize the service
+  /// Initialize the service (fast - only loads asset bytes)
   Future<bool> initialize() async {
     if (_isInitialized) {
       _logger.info('LocalInferenceService already initialized');
@@ -54,131 +70,94 @@ class LocalInferenceService {
     }
 
     try {
-      _logger.info('Initializing LocalInferenceService...');
+      _logger.info('Initializing LocalInferenceService (loading asset bytes)...');
 
-      // Initialize ONNX Runtime environment
+      // Initialize ONNX Runtime environment on main thread
       OrtEnv.instance.init();
-      var providers = OrtEnv.instance.availableProviders();
 
-      // Check if models exist
-      final emotionModelExists = await _assetExists(
-        'assets/models/emotion_model.onnx',
-      );
-      final ageGenderModelExists = await _assetExists(
-        'assets/models/age_and_gender_model.onnx',
-      );
-      final languageModelExists = await _assetExists(
-        'assets/models/language_model.onnx',
-      );
+      // Load model assets on main thread (fast - just loads bytes into memory)
+      _logger.info('Loading model asset bytes...');
+      _emotionModelBytes = await _loadAssetBytes('assets/models/emotion_model.onnx');
+      _ageGenderModelBytes = await _loadAssetBytes('assets/models/age_and_gender_model.onnx');
+      _languageModelBytes = await _loadAssetBytes('assets/models/language_model.onnx');
 
-      if (!emotionModelExists) {
-        _logger.error('Emotion model not found');
-        OrtEnv.instance.release();
+      if (_emotionModelBytes == null || _ageGenderModelBytes == null || _languageModelBytes == null) {
+        _logger.error('One or more model files not found');
         return false;
       }
-
-      if (!ageGenderModelExists) {
-        _logger.error('Age and gender model not found');
-        OrtEnv.instance.release();
-        return false;
-      }
-
-      if (!languageModelExists) {
-        _logger.error('Language model not found');
-        OrtEnv.instance.release();
-        return false;
-      }
-
-      // Load the models
-      await _loadEmotionModel();
-      await _loadAgeGenderModel();
-      await _loadLanguageModel();
 
       _isInitialized = true;
-      _logger.info('LocalInferenceService initialized successfully');
+      _logger.info('LocalInferenceService initialized successfully (asset bytes loaded)');
       return true;
     } catch (e, stackTrace) {
-      _logger.error(
-        'Failed to initialize LocalInferenceService',
-        e,
-        stackTrace,
-      );
-      // Clean up on failure
+      _logger.error('Failed to initialize LocalInferenceService', e, stackTrace);
       await _cleanup();
       return false;
     }
   }
 
-  /// Load the emotion model
-  Future<void> _loadEmotionModel() async {
-    try {
-      const assetFileName = 'assets/models/emotion_model.onnx';
-      final rawAssetFile = await rootBundle.load(assetFileName);
-      final bytes = rawAssetFile.buffer.asUint8List();
-
-      final sessionOptions = OrtSessionOptions();
-      sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
-      sessionOptions.appendXnnpackProvider();
-      sessionOptions.appendCPUProvider(CPUFlags.useNone);
-      _emotionSession = OrtSession.fromBuffer(bytes, sessionOptions);
-      sessionOptions.release();
-
-      _logger.info('Emotion model loaded successfully');
-    } catch (e) {
-      _logger.error('Failed to load emotion model: $e');
-      rethrow;
-    }
-  }
-
-  /// Load the age and gender model
-  Future<void> _loadAgeGenderModel() async {
-    try {
-      const assetFileName = 'assets/models/age_and_gender_model.onnx';
-      final rawAssetFile = await rootBundle.load(assetFileName);
-      final bytes = rawAssetFile.buffer.asUint8List();
-
-      final sessionOptions = OrtSessionOptions();
-      sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
-      sessionOptions.appendXnnpackProvider();
-      sessionOptions.appendCPUProvider(CPUFlags.useNone);
-      _ageGenderSession = OrtSession.fromBuffer(bytes, sessionOptions);
-      sessionOptions.release();
-
-      _logger.info('Age and gender model loaded successfully');
-    } catch (e) {
-      _logger.error('Failed to load age and gender model: $e');
-      rethrow;
-    }
-  }
-
-  /// Load the language identification model
-  Future<void> _loadLanguageModel() async {
-    try {
-      const assetFileName = 'assets/models/language_model.onnx';
-      final rawAssetFile = await rootBundle.load(assetFileName);
-      final bytes = rawAssetFile.buffer.asUint8List();
-
-      final sessionOptions = OrtSessionOptions();
-      sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
-      sessionOptions.appendXnnpackProvider();
-      sessionOptions.appendCPUProvider(CPUFlags.useNone);
-      _languageSession = OrtSession.fromBuffer(bytes, sessionOptions);
-      sessionOptions.release();
-
-      _logger.info('Language model loaded successfully');
-    } catch (e) {
-      _logger.error('Failed to load language model: $e');
-      rethrow;
-    }
-  }
-
-  /// Check if an asset exists
-  Future<bool> _assetExists(String assetPath) async {
-    try {
-      await rootBundle.load(assetPath);
+  /// Load models into memory (slow - deferred until first use)
+  Future<bool> _loadModels() async {
+    if (_modelsLoaded) {
+      _logger.info('Models already loaded in memory');
       return true;
-    } catch (e) {
+    }
+
+    if (!_isInitialized) {
+      _logger.error('Service not initialized. Call initialize() first.');
       return false;
+    }
+
+    try {
+      _logger.info('Loading models into memory (this may take a few seconds)...');
+
+      // Create ONNX sessions using compute (this is the slow, CPU-intensive part)
+      final sessionResults = await Future.wait([
+        compute(_loadModelInBackground, ModelLoadingParams('emotion', _emotionModelBytes!)),
+        compute(_loadModelInBackground, ModelLoadingParams('age_gender', _ageGenderModelBytes!)),
+        compute(_loadModelInBackground, ModelLoadingParams('language', _languageModelBytes!)),
+      ]);
+
+      _emotionSession = sessionResults[0];
+      _ageGenderSession = sessionResults[1];
+      _languageSession = sessionResults[2];
+
+      if (_emotionSession == null || _ageGenderSession == null || _languageSession == null) {
+        _logger.error('Failed to load one or more models into memory');
+        return false;
+      }
+
+      _modelsLoaded = true;
+      _logger.info('Models loaded into memory successfully');
+      return true;
+    } catch (e, stackTrace) {
+      _logger.error('Failed to load models into memory', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Load asset bytes (on main thread where rootBundle works)
+  Future<Uint8List?> _loadAssetBytes(String assetPath) async {
+    try {
+      final rawAssetFile = await rootBundle.load(assetPath);
+      return rawAssetFile.buffer.asUint8List();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Load model in background compute function (ONNX session creation only)
+  static OrtSession? _loadModelInBackground(ModelLoadingParams params) {
+    try {
+      final sessionOptions = OrtSessionOptions();
+      sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
+      sessionOptions.appendXnnpackProvider();
+      sessionOptions.appendCPUProvider(CPUFlags.useNone);
+      final session = OrtSession.fromBuffer(params.modelBytes, sessionOptions);
+      sessionOptions.release();
+      return session;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -196,7 +175,7 @@ class LocalInferenceService {
     return ['.mp3', '.wav', '.m4a'].contains(extension);
   }
 
-  /// Process audio file with FFmpeg and extract raw audio data
+  /// Process audio file with FFmpeg and extract raw audio data (on main thread)
   Future<Float32List?> _processAudioWithFFmpeg(String inputPath) async {
     String? outputPath;
 
@@ -208,13 +187,7 @@ class LocalInferenceService {
 
       outputPath = _getTempAudioPath(inputPath);
 
-      // FFmpeg command to:
-      // - Convert to raw PCM format (no headers)
-      // - Resample to 16kHz
-      // - Convert to mono
-      // - Normalize audio levels
-      // - Limit duration to 2 minutes
-      // - Output as 32-bit float PCM (little-endian)
+      // FFmpeg command
       final command =
           '-i "$inputPath" -t ${_maxDurationSeconds.toString()} -ar ${_targetSampleRate.toString()} -ac 1 -f f32le -acodec pcm_f32le -y "$outputPath"';
 
@@ -311,7 +284,7 @@ class LocalInferenceService {
     return Float32List.fromList(normalizedSamples);
   }
 
-  /// Enhanced audio preprocessing using FFmpeg
+  /// Enhanced audio preprocessing using FFmpeg (on main thread)
   Future<Float32List?> _preprocessAudio(String audioFilePath) async {
     try {
       final inputFile = File(audioFilePath);
@@ -323,7 +296,6 @@ class LocalInferenceService {
       _logger.info('Starting audio preprocessing for: $audioFilePath');
 
       // Process audio with FFmpeg and get the audio data directly
-      // Temporary files are created and cleaned up inside _processAudioWithFFmpeg
       final audioData = await _processAudioWithFFmpeg(audioFilePath);
       if (audioData == null) {
         _logger.error('Failed to process audio with FFmpeg');
@@ -365,7 +337,7 @@ class LocalInferenceService {
       // Create run options
       runOptions = OrtRunOptions();
 
-      // Run inference
+      // Run inference (this already runs in background via runAsync)
       outputs = await _emotionSession!.runAsync(runOptions, inputs);
 
       if (outputs == null || outputs.isEmpty) {
@@ -448,7 +420,7 @@ class LocalInferenceService {
       // Create run options
       runOptions = OrtRunOptions();
 
-      // Run inference
+      // Run inference (this already runs in background via runAsync)
       outputs = await _ageGenderSession!.runAsync(runOptions, inputs);
 
       if (outputs == null || outputs.length < 2) {
@@ -568,7 +540,7 @@ class LocalInferenceService {
       // Create run options
       runOptions = OrtRunOptions();
 
-      // Run inference
+      // Run inference (this already runs in background via runAsync)
       outputs = await _languageSession!.runAsync(runOptions, inputs);
 
       if (outputs == null || outputs.length < 3) {
@@ -746,6 +718,16 @@ class LocalInferenceService {
       return null;
     }
 
+    // Load models into memory on first use (lazy loading)
+    if (!_modelsLoaded) {
+      _logger.info('First inference call - loading models into memory...');
+      final modelsLoaded = await _loadModels();
+      if (!modelsLoaded) {
+        _logger.error('Failed to load models into memory');
+        return null;
+      }
+    }
+
     try {
       _logger.info('Starting local inference for: $audioFilePath');
 
@@ -756,21 +738,19 @@ class LocalInferenceService {
         return null;
       }
 
-      // Run emotion prediction (uses normalized audio)
+      // Run predictions (inference already happens in background via runAsync)
       final emotion = await _predictEmotion(audioData);
       if (emotion == null) {
         _logger.error('Failed to predict emotion');
         return null;
       }
 
-      // Run age and gender prediction (uses normalized audio)
       final demographics = await _predictAgeGender(audioData);
       if (demographics == null) {
         _logger.error('Failed to predict age and gender');
         return null;
       }
 
-      // Run language prediction (uses raw audio)
       final nationality = await _predictLanguage(audioData);
       if (nationality == null) {
         _logger.error('Failed to predict language');
@@ -792,11 +772,16 @@ class LocalInferenceService {
   }
 
   /// Check if local inference is available
-  bool get isAvailable =>
-      _isInitialized &&
+  bool get isAvailable => _isInitialized && _modelsLoaded &&
       _emotionSession != null &&
       _ageGenderSession != null &&
       _languageSession != null;
+
+  /// Check if service is initialized (asset bytes loaded)
+  bool get isInitialized => _isInitialized;
+
+  /// Check if models are loaded into memory
+  bool get areModelsLoaded => _modelsLoaded;
 
   /// Get available models
   Map<String, bool> get availableModels => {
