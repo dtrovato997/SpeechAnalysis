@@ -1,140 +1,106 @@
 # Speech Analysis App
 
-A simple mobile application for analyzing speech audio to predict **age**, **gender**, and **nationality** using AI deep learning models. The app consists of a Python FastAPI backend for AI inference and a Flutter android app.
+An Android application writte in Flutter for analyzing speech audio to predict **age**, **gender**, **nationality**, and **emotion** using on-device AI inference with ONNX Runtime.
 
 ## Features
 
 ### Mobile App (Flutter)
 - **Record Audio**: Record speech directly within the app (30-second limit)
 - **Upload Audio**: Upload existing audio files (MP3, WAV, M4A)
+- **On-Device Analysis**: Local inference using ONNX Runtime - no data leaves the device
 - **Analysis History**: Browse and manage past analyses
 - **Audio Playback**: Built-in audio player for recorded/uploaded files
 - **Offline Storage**: Local SQLite database for analysis history
+- **Dark/Light Themes**: Multiple theme options with accessibility support
 
-### Backend (Python FastAPI)
-- **Age Prediction**: Regression model for age estimation
+### AI Models (Local Inference)
+- **Age Prediction**: Regression model for age estimation (0-100 years)
 - **Gender Classification**: Multi-class classification (Male/Female/Child)
-- **Language/Nationality Detection**: 256 language identification using Facebook's MMS-LID model
+- **Language/Nationality Detection**: 99+ language identification using Whisper
+- **Emotion Recognition**: 8-emotion classification (angry, happy, sad, neutral, etc.)
 
-##  Architecture
+## Architecture
 
 ```
-┌─────────────────┐    HTTP/REST API    ┌─────────────────┐
-│   Flutter App   │z◄──────────────────►│  Python Backend │
-│                 |                     │                 │
-│ • Record Audio  │                     │ • AI Models     │
-│ • Upload Files  │                     │ • Audio Process │
-│ • View Results  │                     │ • FastAPI       │
-│ • SQLite DB     │                     │                 |
-└─────────────────┘                     └─────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    Flutter Mobile App                  │
+├─────────────────────────────────────────────────────────┤
+│  • Record/Upload Audio     • Analysis History          │
+│  • Local Audio Processing • Results Visualization      │
+│  • SQLite Database        • Theme Management           │
+└─────────────────┬───────────────────────────────────────┘
+                  │
+                  ▼
+┌─────────────────────────────────────────────────────────┐
+│              ONNX Runtime (On-Device)                  │
+├─────────────────────────────────────────────────────────┤
+│  • Age & Gender Model     • Emotion Recognition        │
+│  • Whisper Language Model • Audio Preprocessing        │
+│  • FFmpeg Audio Pipeline  • Real-time Inference       │
+└─────────────────────────────────────────────────────────┘
 ```
 
+## Model Citations
 
-### Prerequisites
+This project uses pre-trained models from Hugging Face:
 
-#### For Backend
-- Python 3.9 or higher
-- pip package manager
-- FFmpeg (for audio processing)
-- At least 4GB RAM (for AI models)
+### Age & Gender Recognition
+**audeering/wav2vec2-large-robust-6-ft-age-gender**  
+- Repository: https://huggingface.co/audeering/wav2vec2-large-robust-6-ft-age-gender
+- Fine-tuned Wav2Vec2 model for age and gender prediction from speech
+- License: CC-BY-4.0
 
-#### For Flutter App
+### Emotion Recognition  
+**Dpngtm/wav2vec2-emotion-recognition**
+- Repository: https://huggingface.co/Dpngtm/wav2vec2-emotion-recognition  
+- Wav2Vec2 model fine-tuned for emotion classification
+- Supports 8 emotion classes: angry, calm, disgust, fearful, happy, neutral, sad, surprised
+
+### Language Detection
+**openai/whisper-tiny**
+- Repository: https://huggingface.co/openai/whisper-tiny
+- Lightweight Whisper model for multilingual speech recognition and language identification
+- Supports 99+ languages with high accuracy
+- License: MIT
+
+## Prerequisites
+
+### For Flutter App
 - Flutter SDK 3.7.2 or higher
 - Dart SDK
 - Android Studio / Xcode (for mobile development)
-- Android/iOS device or emulator
+- Android device or emulator
 
-#### System Requirements
+### System Requirements
 - **Mobile**: Android 7.0+ (API 24+) or iOS 12.0+
+- **Storage**: ~500MB for models and app data
+- **RAM**: 4GB+ recommended for optimal performance
 
-### Installation
+## Installation
 
-## Backend Setup
-
-### 1. Navigate to Backend Directory
+### 1. Clone Repository
 ```bash
-cd backend
+git clone <repository-url>
+cd speech-analysis-app
 ```
 
-### 2. Create Virtual Environment
-```bash
-# Create virtual environment
-python -m venv speech_env
-
-# Activate virtual environment
-# On Windows:
-speech_env\Scripts\activate
-# On macOS/Linux:
-source speech_env/bin/activate
-```
-
-### 3. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Install FFmpeg
-**Windows:**
-- Download FFmpeg from https://ffmpeg.org/download.html
-- Add to system PATH
-
-
-### 5. Run Backend Server
-```bash
-# Development server
-python main.py
-
-# Or with uvicorn directly
-uvicorn main:app --host 0.0.0.0 --port 7860 --reload
-```
-
-The backend will start on `http://localhost:7860`
-
-**First Run Note**: Models will be automatically downloaded on first startup (may take 5-10 minutes)
-
-### 6. Verify Backend
-Visit `http://localhost:7860` in your browser. You should see:
-```json
-{
-  "message": "Audio Analysis API - Age, Gender & Nationality Prediction",
-  "models_loaded": {
-    "age_gender": true,
-    "nationality": true
-  }
-}
-```
-
-## Flutter App Setup
-
-### 1. Navigate to Flutter Directory
+### 2. Navigate to Flutter Directory
 ```bash
 cd flutter_app
 ```
 
-### 2. Install Flutter Dependencies
+### 3. Install Flutter Dependencies
 ```bash
 flutter pub get
 ```
 
-### 3. Configure Backend URL
-Edit `lib/data/services/audio_analysis_api_service.dart`:
-
-```dart
-// For Android Emulator
-static const String baseUrl = 'http://10.0.2.2:7860';
-
-// For iOS Simulator  
-static const String baseUrl = 'http://localhost:7860';
-
-// For Physical Device (replace with your computer's IP)
-static const String baseUrl = 'http://192.168.1.100:7860';
+### 4. Download Model Assets
+The ONNX models are stored using Git LFS. Ensure you have Git LFS installed:
+```bash
+git lfs pull
 ```
 
-if you install the release APK, the default backend url is the following : https://dtrovato997-speechanalysisdemo.hf.space
-
-It might be offline for cost reasons
-
-### 4. Run Flutter App
+### 5. Run Flutter App
 ```bash
 # Check connected devices
 flutter devices
@@ -146,15 +112,28 @@ flutter run
 flutter run -d android
 ```
 
-#### API Endpoints
-- `GET /` - Health check and model status
-- `POST /predict_age_and_gender` - Age and gender prediction
-- `POST /predict_nationality` - Language/nationality prediction  
-- `POST /predict_all` - Complete analysis
+## Technical Details
 
-## Technologies and Models
+### Audio Processing Pipeline
+1. **Input**: Record (30s max) or upload audio file (MP3, WAV, M4A)
+2. **Preprocessing**: FFmpeg conversion to 16kHz mono PCM
+3. **Feature Extraction**: Wav2Vec2 feature encoding
+4. **Inference**: ONNX Runtime model execution
+5. **Results**: Age, gender, language, and emotion predictions
 
-- **Facebook MMS-LID**: Language identification model
-- **Wav2Vec2**: Age and gender prediction model  
-- **Flutter**: Cross-platform framework
-- **FastAPI**: Modern Python web framework
+### Model Performance
+- **Age Prediction**: Mean Absolute Error ~6 years
+- **Gender Classification**: 95%+ accuracy  
+- **Language Detection**: 99+ languages supported
+- **Emotion Recognition**: 8-class emotion detection
+
+## License
+
+This project is licensed under the MIT License. See individual model repositories for their respective licenses.
+
+## Acknowledgments
+
+- **Hugging Face** for providing pre-trained models
+- **ONNX Runtime** for cross-platform inference
+- **Flutter** team for the mobile framework
+- **FFmpeg** for audio processing capabilities
