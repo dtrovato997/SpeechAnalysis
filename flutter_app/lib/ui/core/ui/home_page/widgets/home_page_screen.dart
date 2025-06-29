@@ -5,6 +5,7 @@ import 'package:mobile_speech_recognition/ui/core/ui/home_page/widgets/recent_an
 import 'package:mobile_speech_recognition/ui/core/ui/record_audio/widgets/record_audio_screen.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_list/widgets/analysis_list_screen.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/upload_audio/widgets/upload_audio_screen.dart';
+import 'package:mobile_speech_recognition/ui/core/ui/settings/widgets/settings_screen.dart';
 import 'package:mobile_speech_recognition/services/microphone_permission_service.dart';
 
 class HomePage extends StatefulWidget {
@@ -34,20 +35,35 @@ class _HomePageState extends State<HomePage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      // Only show the app bar on the home tab
       appBar: AppBar(
         title: Text(
-          'Speech Analysis',
+          _currentIndex == 0 ? 'Speech Analysis' : 'Analysis List',
           style: TextStyle(
             color: colorScheme.primary,
             fontWeight: FontWeight.bold,
           ),
-
           textAlign: TextAlign.left,
         ),
         scrolledUnderElevation: 0.0,
         backgroundColor: colorScheme.surfaceBright,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.settings_outlined,
+              color: colorScheme.primary,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
+            },
+            tooltip: 'Settings',
+          ),
+        ],
       ),
       backgroundColor: colorScheme.surfaceBright,
 
