@@ -3,6 +3,7 @@ import 'dart:math' as dart_math;
 import 'dart:typed_data';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
+import 'package:mobile_speech_recognition/utils/language_map.dart';
 import 'package:path/path.dart' as path;
 import 'package:onnxruntime/onnxruntime.dart';
 import 'package:flutter/services.dart';
@@ -18,7 +19,7 @@ class ModelLoadingParams {
   ModelLoadingParams(this.modelName, this.modelBytes);
 }
 
-/// Service for running local ONNX model inference
+/// Service for running local ONNX model inference with Whisper language detection
 /// Model loading happens in background threads, everything else on main thread
 class LocalInferenceService {
   static final LocalInferenceService _instance =
@@ -33,34 +34,36 @@ class LocalInferenceService {
   // Model bytes (loaded at startup)
   Uint8List? _emotionModelBytes;
   Uint8List? _ageGenderModelBytes;
-  Uint8List? _languageModelBytes;
+  Uint8List? _whisperPreprocessorBytes;
+  Uint8List? _whisperLanguageDetectorBytes;
 
   // ONNX Runtime sessions (loaded on first use)
   OrtSession? _emotionSession;
   OrtSession? _ageGenderSession;
-  OrtSession? _languageSession;
+  OrtSession? _whisperPreprocessorSession;
+  OrtSession? _whisperLanguageDetectorSession;
 
   // Audio processing constants
   static const int _targetSampleRate = 16000;
   static const int _maxDurationSeconds = 120; // 2 minutes
 
-  // Language vocabulary - matches your Python model
-  static const List<String> _languageVocabulary = [
-    'chinese',
-    'english',
-    'french',
-    'german',
-    'indonesian',
-    'italian',
-    'japanese',
-    'korean',
-    'portuguese',
-    'russian',
-    'spanish',
-    'turkish',
-    'vietnamese',
-    'other',
+  // Whisper language tokens - extracted from Hugging Face tokenizer config
+  static const List<String> _whisperLanguageTokens = [
+    "<|en|>", "<|zh|>", "<|de|>", "<|es|>", "<|ru|>", "<|ko|>", "<|fr|>", "<|ja|>", "<|pt|>", "<|tr|>",
+    "<|pl|>", "<|ca|>", "<|nl|>", "<|ar|>", "<|sv|>", "<|it|>", "<|id|>", "<|hi|>", "<|fi|>", "<|vi|>",
+    "<|he|>", "<|uk|>", "<|el|>", "<|ms|>", "<|cs|>", "<|ro|>", "<|da|>", "<|hu|>", "<|ta|>", "<|no|>",
+    "<|th|>", "<|ur|>", "<|hr|>", "<|bg|>", "<|lt|>", "<|la|>", "<|mi|>", "<|ml|>", "<|cy|>", "<|sk|>",
+    "<|te|>", "<|fa|>", "<|lv|>", "<|bn|>", "<|sr|>", "<|az|>", "<|sl|>", "<|kn|>", "<|et|>", "<|mk|>",
+    "<|br|>", "<|eu|>", "<|is|>", "<|hy|>", "<|ne|>", "<|mn|>", "<|bs|>", "<|kk|>", "<|sq|>", "<|sw|>",
+    "<|gl|>", "<|mr|>", "<|pa|>", "<|si|>", "<|km|>", "<|sn|>", "<|yo|>", "<|so|>", "<|af|>", "<|oc|>",
+    "<|ka|>", "<|be|>", "<|tg|>", "<|sd|>", "<|gu|>", "<|am|>", "<|yi|>", "<|lo|>", "<|uz|>", "<|fo|>",
+    "<|ht|>", "<|ps|>", "<|tk|>", "<|nn|>", "<|mt|>", "<|sa|>", "<|lb|>", "<|my|>", "<|bo|>", "<|tl|>",
+    "<|mg|>", "<|as|>", "<|tt|>", "<|haw|>", "<|ln|>", "<|ha|>", "<|ba|>", "<|jw|>", "<|su|>"
   ];
+
+  // Extract language codes from tokens
+  static final List<String> _whisperLanguageCodes = 
+      _whisperLanguageTokens.map((token) => token.substring(2, token.length - 2)).toList();
 
   /// Initialize the service (fast - only loads asset bytes)
   Future<bool> initialize() async {
@@ -79,9 +82,11 @@ class LocalInferenceService {
       _logger.info('Loading model asset bytes...');
       _emotionModelBytes = await _loadAssetBytes('assets/models/emotion_model.onnx');
       _ageGenderModelBytes = await _loadAssetBytes('assets/models/age_and_gender_model.onnx');
-      _languageModelBytes = await _loadAssetBytes('assets/models/language_model.onnx');
+      _whisperPreprocessorBytes = await _loadAssetBytes('assets/models/whisper_preprocessor.onnx');
+      _whisperLanguageDetectorBytes = await _loadAssetBytes('assets/models/whisper_lang_detector.onnx');
 
-      if (_emotionModelBytes == null || _ageGenderModelBytes == null || _languageModelBytes == null) {
+      if (_emotionModelBytes == null || _ageGenderModelBytes == null || 
+          _whisperPreprocessorBytes == null || _whisperLanguageDetectorBytes == null) {
         _logger.error('One or more model files not found');
         return false;
       }
@@ -115,14 +120,17 @@ class LocalInferenceService {
       final sessionResults = await Future.wait([
         compute(_loadModelInBackground, ModelLoadingParams('emotion', _emotionModelBytes!)),
         compute(_loadModelInBackground, ModelLoadingParams('age_gender', _ageGenderModelBytes!)),
-        compute(_loadModelInBackground, ModelLoadingParams('language', _languageModelBytes!)),
+        compute(_loadModelInBackground, ModelLoadingParams('whisper_preprocessor', _whisperPreprocessorBytes!)),
+        compute(_loadModelInBackground, ModelLoadingParams('whisper_language_detector', _whisperLanguageDetectorBytes!)),
       ]);
 
       _emotionSession = sessionResults[0];
       _ageGenderSession = sessionResults[1];
-      _languageSession = sessionResults[2];
+      _whisperPreprocessorSession = sessionResults[2];
+      _whisperLanguageDetectorSession = sessionResults[3];
 
-      if (_emotionSession == null || _ageGenderSession == null || _languageSession == null) {
+      if (_emotionSession == null || _ageGenderSession == null || 
+          _whisperPreprocessorSession == null || _whisperLanguageDetectorSession == null) {
         _logger.error('Failed to load one or more models into memory');
         return false;
       }
@@ -146,17 +154,49 @@ class LocalInferenceService {
     }
   }
 
-  /// Load model in background compute function (ONNX session creation only)
+ /// Load model in background compute function (ONNX session creation only)
   static OrtSession? _loadModelInBackground(ModelLoadingParams params) {
     try {
+      print('Loading model: ${params.modelName}, size: ${params.modelBytes.length} bytes');
+      
       final sessionOptions = OrtSessionOptions();
-      sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
-      sessionOptions.appendXnnpackProvider();
-      sessionOptions.appendCPUProvider(CPUFlags.useNone);
+      
+      // Use different provider strategies based on model type
+      if (params.modelName == 'whisper_language_detector') {
+        try {
+          sessionOptions.appendCPUProvider(CPUFlags.useNone);
+          print('Using CPU-only provider for ${params.modelName}');
+        } catch (e) {
+          print('CPU provider configuration failed for ${params.modelName}: $e');
+        }
+      } else {
+        try {
+          sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
+        } catch (e) {
+          print('NNAPI provider not available for ${params.modelName}: $e');
+        }
+        
+        try {
+          sessionOptions.appendXnnpackProvider();
+        } catch (e) {
+          print('XNNPACK provider not available for ${params.modelName}: $e');
+        }
+        
+        try {
+          sessionOptions.appendCPUProvider(CPUFlags.useNone);
+        } catch (e) {
+          print('CPU provider configuration failed for ${params.modelName}: $e');
+        }
+      }
+      
       final session = OrtSession.fromBuffer(params.modelBytes, sessionOptions);
       sessionOptions.release();
+      
+      print('Successfully loaded model: ${params.modelName}');
       return session;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Failed to load model ${params.modelName}: $e');
+      print('Stack trace: $stackTrace');
       return null;
     }
   }
@@ -169,13 +209,11 @@ class LocalInferenceService {
     return path.join(tempDir.path, filename);
   }
 
-  /// Check if the audio file format is supported
   bool _isSupportedFormat(String filePath) {
     final extension = path.extension(filePath).toLowerCase();
     return ['.mp3', '.wav', '.m4a'].contains(extension);
   }
 
-  /// Process audio file with FFmpeg and extract raw audio data (on main thread)
   Future<Float32List?> _processAudioWithFFmpeg(String inputPath) async {
     String? outputPath;
 
@@ -212,7 +250,6 @@ class LocalInferenceService {
       _logger.error('Error processing audio with FFmpeg', e, stackTrace);
       return null;
     } finally {
-      // Always clean up the temporary file
       if (outputPath != null) {
         try {
           final tempFile = File(outputPath);
@@ -227,7 +264,6 @@ class LocalInferenceService {
     }
   }
 
-  /// Read raw PCM float32 file and convert to Float32List (no normalization)
   Future<Float32List?> _readRawPCMFile(String pcmPath) async {
     try {
       final file = File(pcmPath);
@@ -258,30 +294,6 @@ class LocalInferenceService {
       _logger.error('Error reading PCM file', e, stackTrace);
       return null;
     }
-  }
-
-  /// Normalize audio signal to [-1, 1] range using the same algorithm as tf_normalize_signal
-  Float32List _normalizeSignal(Float32List audioData) {
-    // Find the maximum absolute value for normalization
-    double maxAbsValue = 0.0;
-    for (final sample in audioData) {
-      final absValue = sample.abs();
-      if (absValue > maxAbsValue) {
-        maxAbsValue = absValue;
-      }
-    }
-
-    // Calculate gain: 1.0 / (max_abs + 1e-9)
-    final gain = 1.0 / (maxAbsValue + 1e-9);
-    
-    // Apply gain to normalize signal
-    final normalizedSamples = <double>[];
-    for (final sample in audioData) {
-      normalizedSamples.add(sample * gain);
-    }
-
-    _logger.debug('Audio normalized with gain: $gain (max abs: $maxAbsValue)');
-    return Float32List.fromList(normalizedSamples);
   }
 
   /// Enhanced audio preprocessing using FFmpeg (on main thread)
@@ -317,7 +329,6 @@ class LocalInferenceService {
       return null;
     }
 
-
     OrtValueTensor? inputTensor;
     OrtRunOptions? runOptions;
     List<OrtValue?>? outputs;
@@ -335,7 +346,6 @@ class LocalInferenceService {
       // Create run options
       runOptions = OrtRunOptions();
 
-      // Run inference (this already runs in background via runAsync)
       outputs = await _emotionSession!.runAsync(runOptions, inputs);
 
       if (outputs == null || outputs.isEmpty) {
@@ -351,7 +361,7 @@ class LocalInferenceService {
       }
 
       final logitsData = logitsOutput.value as List<List<double>>;
-      final logits = logitsData[0]; // Assuming batch size of 1
+      final logits = logitsData[0];
 
       final emotionLabels = [
         'angry',
@@ -424,21 +434,18 @@ class LocalInferenceService {
         return null;
       }
 
-      // Get age logits (first output)
       final ageOutput = outputs[1];
       if (ageOutput == null) {
         _logger.error('Age output is null');
         return null;
       }
 
-      // Get gender logits (second output)
       final genderOutput = outputs[2];
       if (genderOutput == null) {
         _logger.error('Gender output is null');
         return null;
       }
 
-      // Process age prediction (regression output - single value)
       final ageData = ageOutput.value;
       double predictedAge;
 
@@ -512,174 +519,140 @@ class LocalInferenceService {
   }
 
   Future<NationalityPrediction?> _predictLanguage(Float32List audioData) async {
-    if (_languageSession == null) {
-      _logger.error('Language model not loaded');
+    if (_whisperPreprocessorSession == null || _whisperLanguageDetectorSession == null) {
+      _logger.error('Whisper models not loaded');
       return null;
     }
 
-    // Use raw audio data (no normalization) for language model
-    OrtValueTensor? inputTensor;
-    OrtRunOptions? runOptions;
-    List<OrtValue?>? outputs;
+    OrtValueTensor? audioTensor;
+    OrtValueTensor? featuresTensor;
+    OrtRunOptions? runOptions1;
+    OrtRunOptions? runOptions2;
+    List<OrtValue?>? preprocessorOutputs;
+    List<OrtValue?>? detectorOutputs;
 
     try {
-      final inputShape = [audioData.length]; // Variable length audio input
+      _logger.debug('Running Whisper preprocessor...');
+      
+      final audioShape = [1, audioData.length];
+      audioTensor = OrtValueTensor.createTensorWithDataList(audioData, audioShape);
+      final preprocessorInputs = {'audio_pcm': audioTensor};
 
-      // Create input tensor with raw (unnormalized) audio
-      inputTensor = OrtValueTensor.createTensorWithDataList(
-        audioData,
-        inputShape,
+      runOptions1 = OrtRunOptions();
+      preprocessorOutputs = await _whisperPreprocessorSession!.runAsync(runOptions1, preprocessorInputs);
+
+      if (preprocessorOutputs == null || preprocessorOutputs.isEmpty) {
+        _logger.error('No outputs from Whisper preprocessor');
+        return null;
+      }
+
+      final featuresOutput = preprocessorOutputs[0];
+      if (featuresOutput == null) {
+        _logger.error('Features output from preprocessor is null');
+        return null;
+      }
+
+      final featuresData = featuresOutput.value as List<List<List<double>>>;
+      _logger.debug('Preprocessor output shape: [${featuresData.length}, ${featuresData[0].length}, ${featuresData[0][0].length}]');
+
+      final features2D = featuresData[0]; // Remove batch dimension
+      
+      // Step 3: Run Whisper language detector
+      _logger.debug('Running Whisper language detector...');
+      
+      // Create input tensor for language detector with shape [80, 3000]
+      final featuresShape = [features2D.length, features2D[0].length];
+      final flatFeatures = <double>[];
+      for (final row in features2D) {
+        flatFeatures.addAll(row);
+      }
+      
+      featuresTensor = OrtValueTensor.createTensorWithDataList(
+        Float32List.fromList(flatFeatures), 
+        featuresShape
       );
-      final inputs = {'signal': inputTensor}; // Adjust input name if needed
+      final detectorInputs = {'input_features': featuresTensor};
 
-      // Create run options
-      runOptions = OrtRunOptions();
+      runOptions2 = OrtRunOptions();
+      detectorOutputs = await _whisperLanguageDetectorSession!.runAsync(runOptions2, detectorInputs);
 
-      // Run inference (this already runs in background via runAsync)
-      outputs = await _languageSession!.runAsync(runOptions, inputs);
-
-      if (outputs == null || outputs.length < 3) {
-        _logger.error('Insufficient outputs from language model');
+      if (detectorOutputs == null || detectorOutputs.isEmpty) {
+        _logger.error('No outputs from Whisper language detector');
         return null;
       }
 
-      // Get outputs - based on your Python model outputs
-      final predictedClassOutput = outputs[0];
-      final confidenceOutput = outputs[1];
-      final probabilitiesOutput = outputs[2];
-
-      if (predictedClassOutput == null ||
-          confidenceOutput == null ||
-          probabilitiesOutput == null) {
-        _logger.error('One or more language model outputs are null');
+      final languageProbsOutput = detectorOutputs[0];
+      if (languageProbsOutput == null) {
+        _logger.error('Language probabilities output is null');
         return null;
       }
 
-      // Extract prediction results
-      final predictedClassData = predictedClassOutput.value;
-      final confidenceData = confidenceOutput.value;
-      final probabilitiesData = probabilitiesOutput.value;
+      // Get language probabilities
+      final languageProbsData = languageProbsOutput.value;
+      List<double> languageProbs;
 
-      // Handle different output formats with robust type conversion
-      int predictedIndex;
-      double confidence;
-      List<double> probabilities;
+      if (languageProbsData is List<List<double>>) {
+        languageProbs = languageProbsData[0]; // Remove batch dimension
+      } else if (languageProbsData is List<double>) {
+        languageProbs = languageProbsData;
+      } else {
+        _logger.error('Unexpected language probabilities format: ${languageProbsData.runtimeType}');
+        return null;
+      }
 
-      // Parse predicted class index
-      if (predictedClassData is List) {
-        final firstElement = predictedClassData[0];
-        if (firstElement is int) {
-          predictedIndex = firstElement;
-        } else if (firstElement is double) {
-          predictedIndex = firstElement.round();
-        } else {
-          predictedIndex = (firstElement as num).round();
+      // Find top prediction
+      int topIndex = 0;
+      double maxProb = languageProbs[0];
+      for (int i = 1; i < languageProbs.length; i++) {
+        if (languageProbs[i] > maxProb) {
+          maxProb = languageProbs[i];
+          topIndex = i;
         }
-      } else {
-        predictedIndex = (predictedClassData as num).round();
-      }
-
-      // Parse confidence value
-      if (confidenceData is List) {
-        final firstElement = confidenceData[0];
-        confidence = (firstElement as num).toDouble();
-      } else {
-        confidence = (confidenceData as num).toDouble();
-      }
-
-      // Parse probabilities with robust type handling
-      if (probabilitiesData is List<List<dynamic>>) {
-        // Handle nested list with dynamic types
-        final innerList = probabilitiesData[0];
-        probabilities = innerList.map((e) => (e as num).toDouble()).toList();
-      } else if (probabilitiesData is List<List<double>>) {
-        probabilities = probabilitiesData[0]; // Batch size 1
-      } else if (probabilitiesData is List<double>) {
-        probabilities = probabilitiesData;
-      } else if (probabilitiesData is List<dynamic>) {
-        // Handle flat list with dynamic types
-        probabilities =
-            probabilitiesData.map((e) => (e as num).toDouble()).toList();
-      } else {
-        _logger.error(
-          'Unexpected probabilities format: ${probabilitiesData.runtimeType}',
-        );
-        _logger.debug('Probabilities data: $probabilitiesData');
-        return null;
       }
 
       // Get predicted language
-      final predictedLanguage =
-          predictedIndex < _languageVocabulary.length
-              ? _languageVocabulary[predictedIndex]
-              : 'other';
+      final predictedLanguageCode = topIndex < _whisperLanguageCodes.length 
+          ? _whisperLanguageCodes[topIndex] 
+          : 'unk';
 
       // Create top languages list from probabilities
       final languageProbPairs = <MapEntry<String, double>>[];
-      for (
-        int i = 0;
-        i < probabilities.length && i < _languageVocabulary.length;
-        i++
-      ) {
-        languageProbPairs.add(
-          MapEntry(_languageVocabulary[i], probabilities[i]),
-        );
+      for (int i = 0; i < languageProbs.length && i < _whisperLanguageCodes.length; i++) {
+        languageProbPairs.add(MapEntry(_whisperLanguageCodes[i], languageProbs[i]));
       }
 
       // Sort by probability (descending) and take top 5
       languageProbPairs.sort((a, b) => b.value.compareTo(a.value));
 
-      final topLanguages =
-          languageProbPairs
-              .take(5)
-              .map(
-                (entry) => LanguagePrediction(
-                  languageCode: _mapLanguageToCode(entry.key),
-                  probability: entry.value,
-                ),
-              )
-              .toList();
+      final topLanguages = languageProbPairs
+          .take(5)
+          .map((entry) => LanguagePrediction(
+                languageCode: LanguageMap.mapWhisperLanguageToCode(entry.key),
+                probability: entry.value,
+              ))
+          .toList();
 
       _logger.info(
-        'Language prediction completed: ${predictedLanguage} (${confidence.toStringAsFixed(3)})',
+        'Whisper language prediction completed: $predictedLanguageCode (${maxProb.toStringAsFixed(3)})',
       );
 
       return NationalityPrediction(
-        predictedLanguage: _mapLanguageToCode(predictedLanguage),
-        confidence: confidence,
+        predictedLanguage: LanguageMap.mapWhisperLanguageToCode(predictedLanguageCode),
+        confidence: maxProb,
         topLanguages: topLanguages,
       );
     } catch (e, stackTrace) {
-      _logger.error('Error during language prediction', e, stackTrace);
+      _logger.error('Error during Whisper language prediction', e, stackTrace);
       return null;
     } finally {
       // Clean up resources
-      inputTensor?.release();
-      runOptions?.release();
-      outputs?.forEach((output) => output?.release());
+      audioTensor?.release();
+      featuresTensor?.release();
+      runOptions1?.release();
+      runOptions2?.release();
+      preprocessorOutputs?.forEach((output) => output?.release());
+      detectorOutputs?.forEach((output) => output?.release());
     }
-  }
-
-  /// Map internal language names to language codes used in your LanguageMap
-  String _mapLanguageToCode(String languageName) {
-    const languageCodeMap = {
-      'chinese': 'cmn', // Mandarin Chinese
-      'english': 'eng', // English
-      'french': 'fra', // French
-      'german': 'deu', // German
-      'indonesian': 'ind', // Indonesian
-      'italian': 'ita', // Italian
-      'japanese': 'jpn', // Japanese
-      'korean': 'kor', // Korean
-      'portuguese': 'por', // Portuguese
-      'russian': 'rus', // Russian
-      'spanish': 'spa', // Spanish
-      'turkish': 'tur', // Turkish
-      'vietnamese': 'vie', // Vietnamese
-      'other': 'unk', // Unknown language fallback
-    };
-
-    return languageCodeMap[languageName.toLowerCase()] ?? 'unk';
   }
 
   /// Apply softmax function to convert logits to probabilities
@@ -746,9 +719,10 @@ class LocalInferenceService {
         return null;
       }
 
+      // Use Whisper-based language prediction instead of the old model
       final nationality = await _predictLanguage(audioData);
       if (nationality == null) {
-        _logger.error('Failed to predict language');
+        _logger.error('Failed to predict language with Whisper');
         return null;
       }
 
@@ -770,7 +744,8 @@ class LocalInferenceService {
   bool get isAvailable => _isInitialized && _modelsLoaded &&
       _emotionSession != null &&
       _ageGenderSession != null &&
-      _languageSession != null;
+      _whisperPreprocessorSession != null &&
+      _whisperLanguageDetectorSession != null;
 
   /// Check if service is initialized (asset bytes loaded)
   bool get isInitialized => _isInitialized;
@@ -781,12 +756,12 @@ class LocalInferenceService {
   /// Get available models
   Map<String, bool> get availableModels => {
     'age_gender': _ageGenderSession != null,
-    'nationality': _languageSession != null,
+    'nationality': _whisperLanguageDetectorSession != null && _whisperPreprocessorSession != null,
     'emotion': _emotionSession != null,
   };
 
-  /// Get supported languages
-  List<String> get supportedLanguages => List.from(_languageVocabulary);
+  /// Get supported languages (Whisper languages)
+  List<String> get supportedLanguages => List.from(_whisperLanguageCodes);
 
   /// Clean up resources
   Future<void> _cleanup() async {
@@ -797,8 +772,11 @@ class LocalInferenceService {
       _ageGenderSession?.release();
       _ageGenderSession = null;
 
-      _languageSession?.release();
-      _languageSession = null;
+      _whisperPreprocessorSession?.release();
+      _whisperPreprocessorSession = null;
+
+      _whisperLanguageDetectorSession?.release();
+      _whisperLanguageDetectorSession = null;
 
       if (_isInitialized) {
         OrtEnv.instance.release();
@@ -814,6 +792,7 @@ class LocalInferenceService {
       _logger.info('Disposing LocalInferenceService...');
       await _cleanup();
       _isInitialized = false;
+      _modelsLoaded = false;
       _logger.info('LocalInferenceService disposed');
     } catch (e, stackTrace) {
       _logger.error('Error disposing LocalInferenceService', e, stackTrace);
