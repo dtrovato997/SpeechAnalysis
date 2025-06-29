@@ -59,3 +59,9 @@ backend/cache/
 
 # OS generated files
 Thumbs.db
+
+# Android related files for code signing
+key.properties
+**/*.keystore
+**/*.jks
+upload-keystore.jks
