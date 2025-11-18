@@ -72,18 +72,38 @@ class LocalInferenceService {
       return true;
     }
 
-    try {
-      _logger.info('Initializing LocalInferenceService (loading asset bytes)...');
+    final initStartTime = DateTime.now();
+    _logger.info('=== PROFILING: Service Initialization Started ===');
 
+    try {
       // Initialize ONNX Runtime environment on main thread
+      final ortEnvStartTime = DateTime.now();
       OrtEnv.instance.init();
+      final ortEnvDuration = DateTime.now().difference(ortEnvStartTime);
+      _logger.info('PROFILING: OrtEnv initialization took ${ortEnvDuration.inMilliseconds}ms');
 
       // Load model assets on main thread (fast - just loads bytes into memory)
-      _logger.info('Loading model asset bytes...');
+      _logger.info('PROFILING: Loading model asset bytes...');
+      
+      final emotionLoadStart = DateTime.now();
       _emotionModelBytes = await _loadAssetBytes('assets/models/emotion_model.onnx');
+      final emotionLoadDuration = DateTime.now().difference(emotionLoadStart);
+      _logger.info('PROFILING: Emotion model bytes loaded in ${emotionLoadDuration.inMilliseconds}ms (${_emotionModelBytes?.length ?? 0} bytes)');
+      
+      final ageGenderLoadStart = DateTime.now();
       _ageGenderModelBytes = await _loadAssetBytes('assets/models/age_and_gender_model.onnx');
+      final ageGenderLoadDuration = DateTime.now().difference(ageGenderLoadStart);
+      _logger.info('PROFILING: Age & Gender model bytes loaded in ${ageGenderLoadDuration.inMilliseconds}ms (${_ageGenderModelBytes?.length ?? 0} bytes)');
+      
+      final whisperPreprocLoadStart = DateTime.now();
       _whisperPreprocessorBytes = await _loadAssetBytes('assets/models/whisper_preprocessor.onnx');
+      final whisperPreprocLoadDuration = DateTime.now().difference(whisperPreprocLoadStart);
+      _logger.info('PROFILING: Whisper preprocessor bytes loaded in ${whisperPreprocLoadDuration.inMilliseconds}ms (${_whisperPreprocessorBytes?.length ?? 0} bytes)');
+      
+      final whisperDetectorLoadStart = DateTime.now();
       _whisperLanguageDetectorBytes = await _loadAssetBytes('assets/models/whisper_lang_detector.onnx');
+      final whisperDetectorLoadDuration = DateTime.now().difference(whisperDetectorLoadStart);
+      _logger.info('PROFILING: Whisper language detector bytes loaded in ${whisperDetectorLoadDuration.inMilliseconds}ms (${_whisperLanguageDetectorBytes?.length ?? 0} bytes)');
 
       if (_emotionModelBytes == null || _ageGenderModelBytes == null || 
           _whisperPreprocessorBytes == null || _whisperLanguageDetectorBytes == null) {
@@ -91,8 +111,15 @@ class LocalInferenceService {
         return false;
       }
 
+      final totalBytesLoaded = (_emotionModelBytes?.length ?? 0) + 
+                                (_ageGenderModelBytes?.length ?? 0) + 
+                                (_whisperPreprocessorBytes?.length ?? 0) + 
+                                (_whisperLanguageDetectorBytes?.length ?? 0);
+      _logger.info('PROFILING: Total model bytes loaded: ${(totalBytesLoaded / 1024 / 1024).toStringAsFixed(2)} MB');
+
       _isInitialized = true;
-      _logger.info('LocalInferenceService initialized successfully (asset bytes loaded)');
+      final totalInitDuration = DateTime.now().difference(initStartTime);
+      _logger.info('=== PROFILING: Service Initialization Completed in ${totalInitDuration.inMilliseconds}ms ===');
       return true;
     } catch (e, stackTrace) {
       _logger.error('Failed to initialize LocalInferenceService', e, stackTrace);
@@ -113,16 +140,23 @@ class LocalInferenceService {
       return false;
     }
 
-    try {
-      _logger.info('Loading models into memory (this may take a few seconds)...');
+    final loadStartTime = DateTime.now();
+    _logger.info('=== PROFILING: Model Loading Started ===');
 
+    try {
       // Create ONNX sessions using compute (this is the slow, CPU-intensive part)
+      _logger.info('PROFILING: Creating ONNX sessions in parallel...');
+      final parallelLoadStart = DateTime.now();
+      
       final sessionResults = await Future.wait([
         compute(_loadModelInBackground, ModelLoadingParams('emotion', _emotionModelBytes!)),
         compute(_loadModelInBackground, ModelLoadingParams('age_gender', _ageGenderModelBytes!)),
         compute(_loadModelInBackground, ModelLoadingParams('whisper_preprocessor', _whisperPreprocessorBytes!)),
         compute(_loadModelInBackground, ModelLoadingParams('whisper_language_detector', _whisperLanguageDetectorBytes!)),
       ]);
+      
+      final parallelLoadDuration = DateTime.now().difference(parallelLoadStart);
+      _logger.info('PROFILING: Parallel model loading completed in ${parallelLoadDuration.inMilliseconds}ms');
 
       _emotionSession = sessionResults[0];
       _ageGenderSession = sessionResults[1];
@@ -136,7 +170,9 @@ class LocalInferenceService {
       }
 
       _modelsLoaded = true;
-      _logger.info('Models loaded into memory successfully');
+      final totalLoadDuration = DateTime.now().difference(loadStartTime);
+      _logger.info('=== PROFILING: Model Loading Completed in ${totalLoadDuration.inMilliseconds}ms ===');
+      _logger.info('PROFILING: Models now occupy memory - ready for inference');
       return true;
     } catch (e, stackTrace) {
       _logger.error('Failed to load models into memory', e, stackTrace);
@@ -156,46 +192,60 @@ class LocalInferenceService {
 
  /// Load model in background compute function (ONNX session creation only)
   static OrtSession? _loadModelInBackground(ModelLoadingParams params) {
+    final modelLoadStart = DateTime.now();
+    
     try {
-      print('Loading model: ${params.modelName}, size: ${params.modelBytes.length} bytes');
+      print('PROFILING [${params.modelName}]: Starting model load, size: ${params.modelBytes.length} bytes (${(params.modelBytes.length / 1024 / 1024).toStringAsFixed(2)} MB)');
       
       final sessionOptions = OrtSessionOptions();
+      final optionsCreateTime = DateTime.now();
       
       // Use different provider strategies based on model type
       if (params.modelName == 'whisper_language_detector') {
         try {
           sessionOptions.appendCPUProvider(CPUFlags.useNone);
-          print('Using CPU-only provider for ${params.modelName}');
+          print('PROFILING [${params.modelName}]: Using CPU-only provider');
         } catch (e) {
-          print('CPU provider configuration failed for ${params.modelName}: $e');
+          print('PROFILING [${params.modelName}]: CPU provider configuration failed: $e');
         }
       } else {
         try {
           sessionOptions.appendNnapiProvider(NnapiFlags.useNCHW);
+          print('PROFILING [${params.modelName}]: NNAPI provider appended');
         } catch (e) {
-          print('NNAPI provider not available for ${params.modelName}: $e');
+          print('PROFILING [${params.modelName}]: NNAPI provider not available: $e');
         }
         
         try {
           sessionOptions.appendXnnpackProvider();
+          print('PROFILING [${params.modelName}]: XNNPACK provider appended');
         } catch (e) {
-          print('XNNPACK provider not available for ${params.modelName}: $e');
+          print('PROFILING [${params.modelName}]: XNNPACK provider not available: $e');
         }
         
         try {
           sessionOptions.appendCPUProvider(CPUFlags.useNone);
+          print('PROFILING [${params.modelName}]: CPU provider appended');
         } catch (e) {
-          print('CPU provider configuration failed for ${params.modelName}: $e');
+          print('PROFILING [${params.modelName}]: CPU provider configuration failed: $e');
         }
       }
       
+      final optionsConfigTime = DateTime.now().difference(optionsCreateTime);
+      print('PROFILING [${params.modelName}]: Session options configured in ${optionsConfigTime.inMilliseconds}ms');
+      
+      final sessionCreateStart = DateTime.now();
       final session = OrtSession.fromBuffer(params.modelBytes, sessionOptions);
+      final sessionCreateTime = DateTime.now().difference(sessionCreateStart);
+      print('PROFILING [${params.modelName}]: Session creation took ${sessionCreateTime.inMilliseconds}ms');
+      
       sessionOptions.release();
       
-      print('Successfully loaded model: ${params.modelName}');
+      final totalLoadTime = DateTime.now().difference(modelLoadStart);
+      print('PROFILING [${params.modelName}]: Successfully loaded in ${totalLoadTime.inMilliseconds}ms total');
       return session;
     } catch (e, stackTrace) {
-      print('Failed to load model ${params.modelName}: $e');
+      print('PROFILING [${params.modelName}]: Failed to load model: $e');
       print('Stack trace: $stackTrace');
       return null;
     }
@@ -216,6 +266,8 @@ class LocalInferenceService {
 
   Future<Float32List?> _processAudioWithFFmpeg(String inputPath) async {
     String? outputPath;
+    final ffmpegStartTime = DateTime.now();
+    _logger.info('PROFILING: FFmpeg audio processing started');
 
     try {
       if (!_isSupportedFormat(inputPath)) {
@@ -223,22 +275,45 @@ class LocalInferenceService {
         return null;
       }
 
+      // Check input file size
+      final inputFile = File(inputPath);
+      final inputFileSize = await inputFile.length();
+      _logger.info('PROFILING: Input audio file size: ${(inputFileSize / 1024 / 1024).toStringAsFixed(2)} MB');
+
       outputPath = _getTempAudioPath(inputPath);
 
       // FFmpeg command
       final command =
           '-i "$inputPath" -t ${_maxDurationSeconds.toString()} -ar ${_targetSampleRate.toString()} -ac 1 -f f32le -acodec pcm_f32le -y "$outputPath"';
 
-      _logger.debug('Executing FFmpeg command: $command');
+      _logger.debug('PROFILING: Executing FFmpeg command: $command');
+      final ffmpegExecStart = DateTime.now();
 
       final session = await FFmpegKit.execute(command);
       final returnCode = await session.getReturnCode();
+      
+      final ffmpegExecDuration = DateTime.now().difference(ffmpegExecStart);
+      _logger.info('PROFILING: FFmpeg execution took ${ffmpegExecDuration.inMilliseconds}ms');
 
       if (ReturnCode.isSuccess(returnCode)) {
-        _logger.info('Audio processing completed successfully');
+        // Check output file size
+        final outputFile = File(outputPath);
+        final outputFileSize = await outputFile.length();
+        _logger.info('PROFILING: Output PCM file size: ${(outputFileSize / 1024 / 1024).toStringAsFixed(2)} MB');
 
         // Read the raw PCM data
+        final readStartTime = DateTime.now();
         final audioData = await _readRawPCMFile(outputPath);
+        final readDuration = DateTime.now().difference(readStartTime);
+        _logger.info('PROFILING: PCM file reading took ${readDuration.inMilliseconds}ms');
+        
+        if (audioData != null) {
+          _logger.info('PROFILING: Audio samples: ${audioData.length} (${(audioData.length / _targetSampleRate).toStringAsFixed(2)}s duration)');
+        }
+
+        final totalFFmpegDuration = DateTime.now().difference(ffmpegStartTime);
+        _logger.info('PROFILING: Total FFmpeg processing took ${totalFFmpegDuration.inMilliseconds}ms');
+        
         return audioData;
       } else {
         final logs = await session.getAllLogs();
@@ -298,14 +373,15 @@ class LocalInferenceService {
 
   /// Enhanced audio preprocessing using FFmpeg (on main thread)
   Future<Float32List?> _preprocessAudio(String audioFilePath) async {
+    final preprocessStartTime = DateTime.now();
+    _logger.info('=== PROFILING: Audio Preprocessing Started ===');
+    
     try {
       final inputFile = File(audioFilePath);
       if (!await inputFile.exists()) {
         _logger.error('Audio file not found: $audioFilePath');
         return null;
       }
-
-      _logger.info('Starting audio preprocessing for: $audioFilePath');
 
       // Process audio with FFmpeg and get the audio data directly
       final audioData = await _processAudioWithFFmpeg(audioFilePath);
@@ -314,7 +390,8 @@ class LocalInferenceService {
         return null;
       }
 
-      _logger.info('Audio preprocessing completed successfully');
+      final totalPreprocessDuration = DateTime.now().difference(preprocessStartTime);
+      _logger.info('=== PROFILING: Audio Preprocessing Completed in ${totalPreprocessDuration.inMilliseconds}ms ===');
       return audioData;
     } catch (e, stackTrace) {
       _logger.error('Error in audio preprocessing', e, stackTrace);
@@ -329,6 +406,10 @@ class LocalInferenceService {
       return null;
     }
 
+    final emotionStartTime = DateTime.now();
+    _logger.info('=== PROFILING: Emotion Inference Started ===');
+    _logger.info('PROFILING [Emotion]: Input audio samples: ${audioData.length}');
+
     OrtValueTensor? inputTensor;
     OrtRunOptions? runOptions;
     List<OrtValue?>? outputs;
@@ -337,23 +418,32 @@ class LocalInferenceService {
       final inputShape = [1, audioData.length];
 
       // Create input tensor with normalized audio
+      final tensorCreateStart = DateTime.now();
       inputTensor = OrtValueTensor.createTensorWithDataList(
         audioData,
         inputShape,
       );
+      final tensorCreateDuration = DateTime.now().difference(tensorCreateStart);
+      _logger.info('PROFILING [Emotion]: Input tensor created in ${tensorCreateDuration.inMilliseconds}ms');
+      
       final inputs = {'input_values': inputTensor};
 
       // Create run options
       runOptions = OrtRunOptions();
 
+      // Run inference
+      final inferenceStart = DateTime.now();
       outputs = await _emotionSession!.runAsync(runOptions, inputs);
+      final inferenceDuration = DateTime.now().difference(inferenceStart);
+      _logger.info('PROFILING [Emotion]: Model inference took ${inferenceDuration.inMilliseconds}ms');
 
       if (outputs == null || outputs.isEmpty) {
         _logger.error('No outputs from emotion model');
         return null;
       }
 
-      // Get logits output
+      // Process outputs
+      final postprocessStart = DateTime.now();
       final logitsOutput = outputs[0];
       if (logitsOutput == null) {
         _logger.error('Logits output is null');
@@ -380,10 +470,13 @@ class LocalInferenceService {
       final topEmotion = emotionProbs.entries.reduce(
         (a, b) => a.value > b.value ? a : b,
       );
+      
+      final postprocessDuration = DateTime.now().difference(postprocessStart);
+      _logger.info('PROFILING [Emotion]: Output postprocessing took ${postprocessDuration.inMilliseconds}ms');
 
-      _logger.info(
-        'Emotion prediction completed: ${topEmotion.key} (${topEmotion.value.toStringAsFixed(3)})',
-      );
+      final totalEmotionDuration = DateTime.now().difference(emotionStartTime);
+      _logger.info('=== PROFILING: Emotion Inference Completed in ${totalEmotionDuration.inMilliseconds}ms ===');
+      _logger.info('PROFILING [Emotion]: Result: ${topEmotion.key} (confidence: ${topEmotion.value.toStringAsFixed(3)})');
 
       return EmotionPrediction(
         predictedEmotion: topEmotion.key,
@@ -408,6 +501,9 @@ class LocalInferenceService {
       return null;
     }
 
+    final ageGenderStartTime = DateTime.now();
+    _logger.info('=== PROFILING: Age & Gender Inference Started ===');
+    _logger.info('PROFILING [AgeGender]: Input audio samples: ${audioData.length}');
 
     OrtValueTensor? inputTensor;
     OrtRunOptions? runOptions;
@@ -417,23 +513,33 @@ class LocalInferenceService {
       final inputShape = [1, audioData.length];
 
       // Create input tensor with normalized audio
+      final tensorCreateStart = DateTime.now();
       inputTensor = OrtValueTensor.createTensorWithDataList(
         audioData,
         inputShape,
       );
+      final tensorCreateDuration = DateTime.now().difference(tensorCreateStart);
+      _logger.info('PROFILING [AgeGender]: Input tensor created in ${tensorCreateDuration.inMilliseconds}ms');
+      
       final inputs = {'signal': inputTensor};
 
       // Create run options
       runOptions = OrtRunOptions();
 
-      // Run inference (this already runs in background via runAsync)
+      // Run inference
+      final inferenceStart = DateTime.now();
       outputs = await _ageGenderSession!.runAsync(runOptions, inputs);
+      final inferenceDuration = DateTime.now().difference(inferenceStart);
+      _logger.info('PROFILING [AgeGender]: Model inference took ${inferenceDuration.inMilliseconds}ms');
 
       if (outputs == null || outputs.length < 2) {
         _logger.error('Insufficient outputs from age and gender model');
         return null;
       }
 
+      // Process outputs
+      final postprocessStart = DateTime.now();
+      
       final ageOutput = outputs[1];
       if (ageOutput == null) {
         _logger.error('Age output is null');
@@ -494,10 +600,13 @@ class LocalInferenceService {
         'M': genderProbs['male'] ?? 0.0,
         'C': genderProbs['child'] ?? 0.0,
       };
+      
+      final postprocessDuration = DateTime.now().difference(postprocessStart);
+      _logger.info('PROFILING [AgeGender]: Output postprocessing took ${postprocessDuration.inMilliseconds}ms');
 
-      _logger.info(
-        'Age and gender prediction completed: Age=${predictedAge.toStringAsFixed(1)}, Gender=$mappedGender (${topGender.value.toStringAsFixed(3)})',
-      );
+      final totalAgeGenderDuration = DateTime.now().difference(ageGenderStartTime);
+      _logger.info('=== PROFILING: Age & Gender Inference Completed in ${totalAgeGenderDuration.inMilliseconds}ms ===');
+      _logger.info('PROFILING [AgeGender]: Result: Age=${predictedAge.toStringAsFixed(1)}, Gender=$mappedGender (confidence: ${topGender.value.toStringAsFixed(3)})');
 
       return AgeGenderPrediction(
         age: AgePrediction(predictedAge: predictedAge),
@@ -524,6 +633,10 @@ class LocalInferenceService {
       return null;
     }
 
+    final languageStartTime = DateTime.now();
+    _logger.info('=== PROFILING: Language Detection Started ===');
+    _logger.info('PROFILING [Language]: Input audio samples: ${audioData.length}');
+
     OrtValueTensor? audioTensor;
     OrtValueTensor? featuresTensor;
     OrtRunOptions? runOptions1;
@@ -532,14 +645,24 @@ class LocalInferenceService {
     List<OrtValue?>? detectorOutputs;
 
     try {
-      _logger.debug('Running Whisper preprocessor...');
+      // Step 1: Whisper Preprocessor
+      _logger.info('PROFILING [Language]: Running Whisper preprocessor...');
+      final preprocessorStart = DateTime.now();
       
       final audioShape = [1, audioData.length];
+      final tensorCreateStart = DateTime.now();
       audioTensor = OrtValueTensor.createTensorWithDataList(audioData, audioShape);
+      final tensorCreateDuration = DateTime.now().difference(tensorCreateStart);
+      _logger.info('PROFILING [Language-Preproc]: Audio tensor created in ${tensorCreateDuration.inMilliseconds}ms');
+      
       final preprocessorInputs = {'audio_pcm': audioTensor};
 
       runOptions1 = OrtRunOptions();
+      
+      final preprocInferenceStart = DateTime.now();
       preprocessorOutputs = await _whisperPreprocessorSession!.runAsync(runOptions1, preprocessorInputs);
+      final preprocInferenceDuration = DateTime.now().difference(preprocInferenceStart);
+      _logger.info('PROFILING [Language-Preproc]: Preprocessor inference took ${preprocInferenceDuration.inMilliseconds}ms');
 
       if (preprocessorOutputs == null || preprocessorOutputs.isEmpty) {
         _logger.error('No outputs from Whisper preprocessor');
@@ -553,12 +676,16 @@ class LocalInferenceService {
       }
 
       final featuresData = featuresOutput.value as List<List<List<double>>>;
-      _logger.debug('Preprocessor output shape: [${featuresData.length}, ${featuresData[0].length}, ${featuresData[0][0].length}]');
+      _logger.info('PROFILING [Language-Preproc]: Output shape: [${featuresData.length}, ${featuresData[0].length}, ${featuresData[0][0].length}]');
 
       final features2D = featuresData[0]; // Remove batch dimension
       
-      // Step 3: Run Whisper language detector
-      _logger.debug('Running Whisper language detector...');
+      final preprocessorTotalDuration = DateTime.now().difference(preprocessorStart);
+      _logger.info('PROFILING [Language-Preproc]: Total preprocessor time: ${preprocessorTotalDuration.inMilliseconds}ms');
+      
+      // Step 2: Whisper Language Detector
+      _logger.info('PROFILING [Language]: Running Whisper language detector...');
+      final detectorStart = DateTime.now();
       
       // Create input tensor for language detector with shape [80, 3000]
       final featuresShape = [features2D.length, features2D[0].length];
@@ -567,20 +694,31 @@ class LocalInferenceService {
         flatFeatures.addAll(row);
       }
       
+      final detectorTensorStart = DateTime.now();
       featuresTensor = OrtValueTensor.createTensorWithDataList(
         Float32List.fromList(flatFeatures), 
         featuresShape
       );
+      final detectorTensorDuration = DateTime.now().difference(detectorTensorStart);
+      _logger.info('PROFILING [Language-Detector]: Features tensor created in ${detectorTensorDuration.inMilliseconds}ms');
+      
       final detectorInputs = {'input_features': featuresTensor};
 
       runOptions2 = OrtRunOptions();
+      
+      final detectorInferenceStart = DateTime.now();
       detectorOutputs = await _whisperLanguageDetectorSession!.runAsync(runOptions2, detectorInputs);
+      final detectorInferenceDuration = DateTime.now().difference(detectorInferenceStart);
+      _logger.info('PROFILING [Language-Detector]: Detector inference took ${detectorInferenceDuration.inMilliseconds}ms');
 
       if (detectorOutputs == null || detectorOutputs.isEmpty) {
         _logger.error('No outputs from Whisper language detector');
         return null;
       }
 
+      // Step 3: Process outputs
+      final postprocessStart = DateTime.now();
+      
       final languageProbsOutput = detectorOutputs[0];
       if (languageProbsOutput == null) {
         _logger.error('Language probabilities output is null');
@@ -599,6 +737,8 @@ class LocalInferenceService {
         _logger.error('Unexpected language probabilities format: ${languageProbsData.runtimeType}');
         return null;
       }
+
+      _logger.info('PROFILING [Language-Detector]: Output probabilities count: ${languageProbs.length}');
 
       // Find top prediction
       int topIndex = 0;
@@ -631,10 +771,16 @@ class LocalInferenceService {
                 probability: entry.value,
               ))
           .toList();
+      
+      final postprocessDuration = DateTime.now().difference(postprocessStart);
+      _logger.info('PROFILING [Language]: Output postprocessing took ${postprocessDuration.inMilliseconds}ms');
 
-      _logger.info(
-        'Whisper language prediction completed: $predictedLanguageCode (${maxProb.toStringAsFixed(3)})',
-      );
+      final detectorTotalDuration = DateTime.now().difference(detectorStart);
+      _logger.info('PROFILING [Language-Detector]: Total detector time: ${detectorTotalDuration.inMilliseconds}ms');
+
+      final totalLanguageDuration = DateTime.now().difference(languageStartTime);
+      _logger.info('=== PROFILING: Language Detection Completed in ${totalLanguageDuration.inMilliseconds}ms ===');
+      _logger.info('PROFILING [Language]: Result: $predictedLanguageCode (confidence: ${maxProb.toStringAsFixed(3)})');
 
       return NationalityPrediction(
         predictedLanguage: LanguageMap.mapWhisperLanguageToCode(predictedLanguageCode),
@@ -686,9 +832,15 @@ class LocalInferenceService {
       return null;
     }
 
+    final totalPredictionStartTime = DateTime.now();
+    _logger.info('======================================');
+    _logger.info('=== PROFILING: COMPLETE ANALYSIS STARTED ===');
+    _logger.info('PROFILING: Audio file: $audioFilePath');
+    _logger.info('======================================');
+
     // Load models into memory on first use (lazy loading)
     if (!_modelsLoaded) {
-      _logger.info('First inference call - loading models into memory...');
+      _logger.info('PROFILING: First inference call - loading models into memory...');
       final modelsLoaded = await _loadModels();
       if (!modelsLoaded) {
         _logger.error('Failed to load models into memory');
@@ -697,8 +849,6 @@ class LocalInferenceService {
     }
 
     try {
-      _logger.info('Starting local inference for: $audioFilePath');
-
       // Preprocess audio (raw, unnormalized)
       final audioData = await _preprocessAudio(audioFilePath);
       if (audioData == null) {
@@ -706,21 +856,37 @@ class LocalInferenceService {
         return null;
       }
 
-      // Run predictions (inference already happens in background via runAsync)
-      final emotion = await _predictEmotion(audioData);
+      _logger.info('======================================');
+      _logger.info('PROFILING: Starting PARALLEL model inference...');
+      _logger.info('======================================');
+
+      // Run all predictions in parallel using Future.wait
+      final parallelInferenceStart = DateTime.now();
+      final results = await Future.wait([
+        _predictEmotion(audioData),
+        _predictAgeGender(audioData),
+        _predictLanguage(audioData),
+      ]);
+      final parallelInferenceDuration = DateTime.now().difference(parallelInferenceStart);
+      
+      _logger.info('======================================');
+      _logger.info('PROFILING: PARALLEL inference completed in ${parallelInferenceDuration.inMilliseconds}ms');
+      _logger.info('======================================');
+
+      final emotion = results[0] as EmotionPrediction?;
+      final demographics = results[1] as AgeGenderPrediction?;
+      final nationality = results[2] as NationalityPrediction?;
+
       if (emotion == null) {
         _logger.error('Failed to predict emotion');
         return null;
       }
 
-      final demographics = await _predictAgeGender(audioData);
       if (demographics == null) {
         _logger.error('Failed to predict age and gender');
         return null;
       }
 
-      // Use Whisper-based language prediction instead of the old model
-      final nationality = await _predictLanguage(audioData);
       if (nationality == null) {
         _logger.error('Failed to predict language with Whisper');
         return null;
@@ -732,7 +898,15 @@ class LocalInferenceService {
         emotion: emotion,
       );
 
-      _logger.info('Local inference completed successfully');
+      final totalPredictionDuration = DateTime.now().difference(totalPredictionStartTime);
+      _logger.info('======================================');
+      _logger.info('=== PROFILING: COMPLETE ANALYSIS FINISHED ===');
+      _logger.info('PROFILING: Total analysis time: ${totalPredictionDuration.inMilliseconds}ms (${(totalPredictionDuration.inMilliseconds / 1000).toStringAsFixed(2)}s)');
+      _logger.info('PROFILING: Parallel inference time: ${parallelInferenceDuration.inMilliseconds}ms');
+      _logger.info('PROFILING: Audio duration: ${(audioData.length / _targetSampleRate).toStringAsFixed(2)}s');
+      _logger.info('PROFILING: Real-time factor: ${((totalPredictionDuration.inMilliseconds / 1000) / (audioData.length / _targetSampleRate)).toStringAsFixed(2)}x');
+      _logger.info('======================================');
+
       return prediction;
     } catch (e, stackTrace) {
       _logger.error('Error during local inference', e, stackTrace);
