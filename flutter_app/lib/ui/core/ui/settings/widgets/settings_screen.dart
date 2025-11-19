@@ -1,6 +1,7 @@
 // lib/ui/core/ui/settings/widgets/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/ui/core/themes/theme_provider.dart';
+import 'package:mobile_speech_recognition/services/logger_service.dart';
 import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -8,6 +9,7 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final _logger = LoggerService();
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -24,7 +26,10 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: colorScheme.surfaceBright,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            _logger.debug('Back button pressed in settings');
+            Navigator.pop(context);
+          },
         ),
       ),
       backgroundColor: colorScheme.surfaceBright,
@@ -61,7 +66,10 @@ class SettingsScreen extends StatelessWidget {
                       },
                     ),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _showThemeSelector(context),
+                    onTap: () {
+                      _logger.info('Theme selector opened');
+                      _showThemeSelector(context);
+                    },
                     contentPadding: EdgeInsets.zero,
                   ),
                 ],
@@ -92,6 +100,7 @@ class ThemeSelectionBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final _logger = LoggerService();
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -153,6 +162,9 @@ class ThemeSelectionBottomSheet extends StatelessWidget {
                             )
                           : null,
                       onTap: () async {
+                        final themeName = ThemeProvider.getThemeDisplayName(theme);
+                        _logger.info('Theme changed to: $themeName');
+                        
                         await themeProvider.setTheme(theme);
                         Navigator.pop(context);
                       },

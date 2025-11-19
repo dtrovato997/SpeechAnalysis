@@ -4,6 +4,7 @@ import 'package:mobile_speech_recognition/ui/core/save_audio_dialog.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/upload_audio/view_models/upload_audio_view_model.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_player_widget.dart';
+import 'package:mobile_speech_recognition/services/logger_service.dart';
 import 'package:provider/provider.dart';
 
 class UploadAudioScreen extends StatefulWidget {
@@ -14,17 +15,20 @@ class UploadAudioScreen extends StatefulWidget {
 }
 
 class _UploadAudioScreenState extends State<UploadAudioScreen> {
+  final _logger = LoggerService();
   late UploadAudioViewModel viewModel;
   bool _shouldClipAudio = false;
 
   @override
   void initState() {
     super.initState();
+    _logger.info('UploadAudioScreen initialized');
     viewModel = UploadAudioViewModel(context);
   }
 
   @override
   void dispose() {
+    _logger.debug('UploadAudioScreen disposing');
     viewModel.dispose();
     super.dispose();
   }
@@ -93,7 +97,6 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
               ],
             ),
           );
-          ;
         },
       ),
     );
@@ -199,7 +202,10 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
           if (!model.isPickingFile && !model.isCheckingDuration) ...[
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () => _selectFile(model),
+              onPressed: () {
+                _logger.debug('Choose File button pressed');
+                _selectFile(model);
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 foregroundColor: colorScheme.onPrimary,
@@ -353,7 +359,10 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
       children: [
         Expanded(
           child: OutlinedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              _logger.debug('Cancel button pressed');
+              Navigator.pop(context);
+            },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
               side: BorderSide(color: colorScheme.outline),
@@ -368,16 +377,17 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
           child: ElevatedButton(
             onPressed:
                 model.hasSelectedFile
-                    ? () => _showSaveDialog(model)
+                    ? () {
+                      _logger.info('Save & Analyze button pressed');
+                      _showSaveDialog(model);
+                    }
                     : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
-            child: Text(
-             'Save & Analyze'
-            ),
+            child: const Text('Save & Analyze'),
           ),
         ),
       ],
@@ -390,12 +400,15 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
     if (success &&
         model.audioDuration != null &&
         model.audioDuration!.inMinutes >= 2) {
+      _logger.warning('Selected audio exceeds 2 minutes, showing duration warning');
       // Show duration warning dialog
       await _showDurationWarningDialog(model);
     }
   }
 
   Future<void> _showDurationWarningDialog(UploadAudioViewModel model) async {
+    _logger.info('Showing duration warning dialog - Duration: ${model.formatDuration(model.audioDuration)}');
+    
     final bool? shouldContinue = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -456,7 +469,10 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
           ),
           actions: [
             ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
+              onPressed: () {
+                _logger.info('User accepted audio clipping');
+                Navigator.of(dialogContext).pop(true);
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 foregroundColor: colorScheme.onPrimary,
@@ -470,33 +486,44 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
 
     if (shouldContinue == true) {
       _shouldClipAudio = true;
+      _logger.debug('Audio clipping enabled, refreshing UI');
       setState(() {}); // Refresh UI to show the warning 
     }
   }
 
   Future<void> _showSaveDialog(UploadAudioViewModel model) async {
+    _logger.info('Showing save dialog for uploaded audio');
+    
     final SaveAudioResult? result = await showDialog<SaveAudioResult>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return SaveAudioDialog.forUpload(initialDescription: model.selectedFilePath?.split('/').last ?? '');
+        return SaveAudioDialog.forUpload(
+          initialDescription: model.selectedFilePath?.split('/').last ?? ''
+        );
       },
     );
 
     if (result != null) {
+      _logger.info('Save dialog completed - Title: "${result.title}", Has description: ${result.description != null && result.description!.isNotEmpty}');
+      
       model.title = result.title;
       model.description = result.description;
 
       try {
+        _logger.info('Saving uploaded audio analysis');
         final analysis = await model.saveAudioAnalysis(
           clipAudio: _shouldClipAudio,
         );
 
         if (analysis != null) {
+          _logger.info('Uploaded audio saved successfully - ID: ${analysis.id}');
+          
           // Close the upload screen
           Navigator.pop(context);
 
           // Navigate to analysis detail
+          _logger.debug('Navigating to analysis detail screen');
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -506,6 +533,7 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
             ),
           );
         } else {
+          _logger.error('Failed to save uploaded audio: saveAudioAnalysis returned null');
           // Show error if save failed
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -514,7 +542,8 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
             ),
           );
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
+        _logger.error('Error saving uploaded audio', e, stackTrace);
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -523,6 +552,8 @@ class _UploadAudioScreenState extends State<UploadAudioScreen> {
           ),
         );
       }
+    } else {
+      _logger.debug('Save dialog cancelled by user');
     }
   }
 }

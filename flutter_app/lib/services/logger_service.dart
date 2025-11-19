@@ -34,11 +34,11 @@ class LoggerService {
       _logger = Logger(
         filter: kDebugMode ? DevelopmentFilter() : ProductionFilter(),
         printer: PrettyPrinter(
-          methodCount: 2,
+          methodCount: 1,
           errorMethodCount: 20,
           lineLength: 120,
           colors: true,
-          printEmojis: true,
+          printEmojis: false,
           dateTimeFormat: DateTimeFormat.dateAndTime,
         ),
         output: MultiOutput([

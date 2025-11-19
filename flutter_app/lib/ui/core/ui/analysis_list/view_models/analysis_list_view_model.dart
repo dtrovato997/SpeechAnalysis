@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
 import 'package:mobile_speech_recognition/utils/analysis_format_utils.dart';
+import 'package:mobile_speech_recognition/services/logger_service.dart';
 import 'package:provider/provider.dart';
 
 class AnalysisListViewModel extends ChangeNotifier {
+  final _logger = LoggerService();
   final AudioAnalysisRepository _audioAnalysisRepository;
   
   // All loaded analyses
@@ -35,6 +37,8 @@ class AnalysisListViewModel extends ChangeNotifier {
   // Constructor
   AnalysisListViewModel(BuildContext context)
       : _audioAnalysisRepository = Provider.of<AudioAnalysisRepository>(context, listen: false) {
+    _logger.info('AnalysisListViewModel initialized');
+    
     // Register as a listener to the repository
     _audioAnalysisRepository.addListener(_onRepositoryChanged);
     
@@ -44,17 +48,21 @@ class AnalysisListViewModel extends ChangeNotifier {
   
   // Called when the repository data changes
   void _onRepositoryChanged() {
+    _logger.debug('Repository changed notification received, reloading analyses');
     // Reload items when repository data changes
     loadAnalyses();
   }
   
   // Load all analyses
   Future<void> loadAnalyses() async {
+    _logger.info('Loading all analyses from repository');
     _setLoading(true);
     
     try {
       // Fetch all analyses from the repository
       final analyses = await _audioAnalysisRepository.getAllAudioAnalyses();
+      
+      _logger.info('Loaded ${analyses.length} analyses from repository');
       
       // Sort by creation date (newest first)
       analyses.sort((a, b) => b.creationDate.compareTo(a.creationDate));
@@ -62,8 +70,12 @@ class AnalysisListViewModel extends ChangeNotifier {
       _analyses = analyses;
       _applyFilter(); // Apply current filter
       _error = null;
-    } catch (e) {
+      
+      _logger.debug('Analyses sorted and filtered, ${_filteredAnalyses.length} analyses after filter');
+    } catch (e, stackTrace) {
       _error = "Failed to load analyses: ${e.toString()}";
+      _logger.error('Failed to load analyses', e, stackTrace);
+      
       // Fallback to empty list
       _analyses = [];
       _filteredAnalyses = [];
@@ -74,6 +86,7 @@ class AnalysisListViewModel extends ChangeNotifier {
   
   // Filter analyses based on search query
   void filterAnalyses(String query) {
+    _logger.debug('Filtering analyses with query: "$query"');
     _searchQuery = query.trim();
     _applyFilter();
   }
@@ -83,6 +96,7 @@ class AnalysisListViewModel extends ChangeNotifier {
     if (_searchQuery.isEmpty) {
       // No filter, show all
       _filteredAnalyses = List.from(_analyses);
+      _logger.debug('No filter applied, showing all ${_filteredAnalyses.length} analyses');
     } else {
       // Filter by title, description, tags, age, gender, nationality, and emotion
       _filteredAnalyses = _analyses.where((analysis) {
@@ -123,23 +137,40 @@ class AnalysisListViewModel extends ChangeNotifier {
         return matchesTitle || matchesDescription || matchesTag || 
                matchesAge || matchesGender || matchesNationality || matchesEmotion;
       }).toList();
+      
+      _logger.info('Filter applied: "${_searchQuery}" - Found ${_filteredAnalyses.length} matching analyses out of ${_analyses.length} total');
     }
       
     notifyListeners();
   }
 
   Future<void> dismissAudioAnalysis(int? id) async {
-     await _audioAnalysisRepository.deleteAudioAnalysis(id!,doNotify: true);
+    if (id == null) {
+      _logger.warning('Attempted to dismiss analysis with null ID');
+      return;
+    }
+    
+    _logger.info('Dismissing analysis with ID: $id');
+    
+    try {
+      await _audioAnalysisRepository.deleteAudioAnalysis(id, doNotify: true);
+      _logger.info('Analysis dismissed successfully: $id');
+    } catch (e, stackTrace) {
+      _logger.error('Failed to dismiss analysis: $id', e, stackTrace);
+      rethrow;
+    }
   }
   
   // Update loading state
   void _setLoading(bool loading) {
+    _logger.debug('Setting loading state to: $loading');
     _isLoading = loading;
     notifyListeners();
   }
   
   @override
   void dispose() {
+    _logger.info('Disposing AnalysisListViewModel');
     // Important: Remove the listener when the ViewModel is disposed
     _audioAnalysisRepository.removeListener(_onRepositoryChanged);
     super.dispose();

@@ -1,9 +1,12 @@
 // lib/utils/analysis_format_utils.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/utils/language_map.dart';
+import 'package:mobile_speech_recognition/services/logger_service.dart';
 
 /// Utility class for formatting analysis results
 class AnalysisFormatUtils {
+  static final _logger = LoggerService();
+  
   static const Map<String, String> genderLabels = {
     'M': 'Male',
     'F': 'Female',
@@ -51,27 +54,27 @@ class AnalysisFormatUtils {
   /// Handles various data formats and key variations
   static String parseGenderResult(Map<String, double>? genderResult) {
     if (genderResult == null || genderResult.isEmpty) {
-      print('Gender result is null or empty');
+      _logger.debug('Gender result is null or empty');
       return '--';
     }
 
-    print('Gender result data: $genderResult');
+    _logger.debug('Parsing gender result: $genderResult');
 
     // Find the Map entry with the maximum value
     final topEntry = genderResult.entries.reduce(
       (a, b) => a.value >= b.value ? a : b,
     );
 
-    print('Top gender entry: ${topEntry.key} = ${topEntry.value}');
+    _logger.debug('Top gender entry: ${topEntry.key} = ${topEntry.value}');
 
     // Handle different key formats and normalize them
     String normalizedKey = _normalizeGenderKey(topEntry.key);
     
-    print('Normalized gender key: $normalizedKey');
+    _logger.debug('Normalized gender key: $normalizedKey');
 
     // Return mapped label or normalized key
     final result = genderLabels[normalizedKey] ?? normalizedKey;
-    print('Final gender result: $result');
+    _logger.debug('Final gender result: $result');
     
     return result;
   }
@@ -97,14 +100,14 @@ class AnalysisFormatUtils {
   static String parseNationalityResult(Map<String, double>? natResult) {
     if (natResult == null || natResult.isEmpty) return '--';
 
-    print('Nationality result data: $natResult');
+    _logger.debug('Parsing nationality result: $natResult');
 
     // Find the Map entry with the maximum value
     final topEntry = natResult.entries.reduce(
       (a, b) => a.value >= b.value ? a : b,
     );
 
-    print('Top nationality entry: ${topEntry.key} = ${topEntry.value}');
+    _logger.debug('Top nationality entry: ${topEntry.key} = ${topEntry.value}');
 
     // Use the language mapping to get the expanded name
     final result = LanguageMap.getLanguageNameWithFallback(
@@ -112,7 +115,7 @@ class AnalysisFormatUtils {
       fallback: '--'
     );
     
-    print('Final nationality result: $result');
+    _logger.debug('Final nationality result: $result');
     
     return result;
   }
@@ -121,24 +124,24 @@ class AnalysisFormatUtils {
   /// e.g. { 'happy': 0.8, 'neutral': 0.15 } → 'Happy'
   static String parseEmotionResult(Map<String, double>? emotionResult) {
     if (emotionResult == null || emotionResult.isEmpty) {
-      print('Emotion result is null or empty');
+      _logger.debug('Emotion result is null or empty');
       return '--';
     }
 
-    print('Emotion result data: $emotionResult');
+    _logger.debug('Parsing emotion result: $emotionResult');
 
     // Find the Map entry with the maximum value
     final topEntry = emotionResult.entries.reduce(
       (a, b) => a.value >= b.value ? a : b,
     );
 
-    print('Top emotion entry: ${topEntry.key} = ${topEntry.value}');
+    _logger.debug('Top emotion entry: ${topEntry.key} = ${topEntry.value}');
 
     // Normalize the emotion key and get the display label
     final normalizedKey = topEntry.key.trim().toLowerCase();
     final result = emotionLabels[normalizedKey] ?? topEntry.key;
     
-    print('Final emotion result: $result');
+    _logger.debug('Final emotion result: $result');
     
     return result;
   }

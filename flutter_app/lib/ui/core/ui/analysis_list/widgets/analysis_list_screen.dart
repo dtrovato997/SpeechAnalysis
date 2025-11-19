@@ -5,6 +5,7 @@ import 'package:mobile_speech_recognition/ui/core/ui/analysis_list/view_models/a
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
 import 'package:mobile_speech_recognition/utils/analysis_format_utils.dart';
+import 'package:mobile_speech_recognition/services/logger_service.dart';
 import 'package:provider/provider.dart';
 
 class AnalysisListScreen extends StatefulWidget {
@@ -15,12 +16,15 @@ class AnalysisListScreen extends StatefulWidget {
 }
 
 class _AnalysisListScreenState extends State<AnalysisListScreen> {
+  final _logger = LoggerService();
   late AnalysisListViewModel viewModel;
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _logger.info('AnalysisListScreen initialized');
+    
     viewModel = AnalysisListViewModel(context);
     
     _searchController.addListener(() {
@@ -30,6 +34,7 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
 
   @override
   void dispose() {
+    _logger.debug('AnalysisListScreen disposing');
     _searchController.dispose();
     viewModel.dispose();
     super.dispose();
@@ -60,6 +65,7 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
                       IconButton(
                         icon: const Icon(Icons.clear),
                         onPressed: () {
+                          _logger.debug('Clearing search query');
                           _searchController.clear();
                         },
                       ),
@@ -81,6 +87,7 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
   Widget _buildListContent(AnalysisListViewModel model, ColorScheme colorScheme) {
     // Show loading indicator if loading
     if (model.isLoading) {
+      _logger.debug('Displaying loading indicator');
       return Center(
         child: CircularProgressIndicator(color: colorScheme.primary),
       );
@@ -88,6 +95,7 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
     
     // Show error message if error occurred
     if (model.hasError) {
+      _logger.warning('Displaying error state: ${model.error}');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -100,7 +108,10 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
             ),
             const SizedBox(height: 8),
             ElevatedButton(
-              onPressed: () => model.loadAnalyses(),
+              onPressed: () {
+                _logger.info('Retry button pressed');
+                model.loadAnalyses();
+              },
               child: const Text('Retry'),
             ),
           ],
@@ -110,6 +121,7 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
     
     // Show empty state if no analyses
     if (model.filteredAnalyses.isEmpty) {
+      _logger.debug('No analyses to display - empty state shown');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -134,9 +146,14 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
       );
     }
     
+    _logger.debug('Displaying list with ${model.filteredAnalyses.length} analyses');
+    
     // Show list of analyses with dismissible feature
     return RefreshIndicator(
-      onRefresh: () => model.loadAnalyses(),
+      onRefresh: () {
+        _logger.info('Pull-to-refresh triggered');
+        return model.loadAnalyses();
+      },
       color: colorScheme.primary,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -150,7 +167,6 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
   }
   
   Widget _buildDismissibleAnalysisCard(BuildContext context, AudioAnalysis analysis, ColorScheme colorScheme) {
-
     return Dismissible(
       key: Key('analysis-${analysis.id}'),
       // Only allow dismissing from right to left (trailing to leading)
@@ -158,29 +174,39 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
       
       // Confirmation will be shown before removing the item
       confirmDismiss: (direction) async {
+        _logger.info('Swipe-to-delete initiated for analysis: ${analysis.id} - "${analysis.title}"');
         return await _showDeleteConfirmationDialog(context, analysis);
       },
       
       // Handle the actual deletion when confirmed
       onDismissed: (direction) async {
         if (analysis.id != null) {
-          await viewModel.dismissAudioAnalysis(analysis.id!);
+          _logger.info('Deleting analysis via swipe: ${analysis.id} - "${analysis.title}"');
           
-          // Show a snackbar with undo option
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Analysis "${analysis.title}" deleted'),
-              action: SnackBarAction(
-                label: 'Close',
-                onPressed: () {
-                  // This is a placeholder for undo functionality
-                  // In a real implementation, you would need to store the deleted item
-
-                },
+          try {
+            await viewModel.dismissAudioAnalysis(analysis.id!);
+            
+            _logger.info('Analysis deleted successfully via swipe: ${analysis.id}');
+            
+            // Show a snackbar with undo option
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Analysis "${analysis.title}" deleted'),
+                action: SnackBarAction(
+                  label: 'Close',
+                  onPressed: () {
+                    // This is a placeholder for undo functionality
+                    // In a real implementation, you would need to store the deleted item
+                  },
+                ),
+                duration: const Duration(seconds: 3),
               ),
-              duration: const Duration(seconds: 3),
-            ),
-          );
+            );
+          } catch (e, stackTrace) {
+            _logger.error('Failed to delete analysis via swipe: ${analysis.id}', e, stackTrace);
+          }
+        } else {
+          _logger.warning('Attempted to delete analysis with null ID via swipe');
         }
       },
       
@@ -212,6 +238,7 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
       child: AnalysisCard(
         analysis: analysis,
         onTap: () {
+          _logger.debug('User tapped on analysis card: ${analysis.id} - "${analysis.title}"');
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -226,6 +253,8 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
   }
   
   Future<bool> _showDeleteConfirmationDialog(BuildContext context, AudioAnalysis analysis) {
+    _logger.info('Showing delete confirmation dialog for analysis: ${analysis.id} - "${analysis.title}"');
+    
     return showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -234,16 +263,26 @@ class _AnalysisListScreenState extends State<AnalysisListScreen> {
           content: Text('Are you sure you want to delete "${analysis.title}"?'),
           actions: <Widget>[
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () {
+                _logger.debug('User cancelled deletion in swipe dialog');
+                Navigator.of(context).pop(false);
+              },
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () {
+                _logger.info('User confirmed deletion in swipe dialog');
+                Navigator.of(context).pop(true);
+              },
               child: const Text('Delete'),
             ),
           ],
         );
       },
-    ).then((value) => value ?? false); // Default to false if dialog is dismissed
+    ).then((value) {
+      final result = value ?? false;
+      _logger.debug('Delete confirmation dialog result: $result');
+      return result;
+    });
   }
 }

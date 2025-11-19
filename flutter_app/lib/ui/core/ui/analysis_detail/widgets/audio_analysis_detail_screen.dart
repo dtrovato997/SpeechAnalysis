@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/view_models/audio_analysis_detail_view_model.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_player_widget.dart';
 import 'package:mobile_speech_recognition/utils/analysis_format_utils.dart';
+import 'package:mobile_speech_recognition/services/logger_service.dart';
 import 'package:provider/provider.dart';
 
 class AudioAnalysisDetailScreen extends StatefulWidget {
@@ -18,11 +19,13 @@ class AudioAnalysisDetailScreen extends StatefulWidget {
 }
 
 class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
+  final _logger = LoggerService();
   late AudioAnalysisDetailViewModel viewModel;
 
   @override
   void initState() {
     super.initState();
+    _logger.info('AudioAnalysisDetailScreen initialized with analysisId: ${widget.analysisId}');
     viewModel = AudioAnalysisDetailViewModel(
       context,
       analysisId: widget.analysisId,
@@ -31,6 +34,7 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
 
   @override
   void dispose() {
+    _logger.debug('AudioAnalysisDetailScreen disposing for analysisId: ${widget.analysisId}');
     viewModel.dispose();
     super.dispose();
   }
@@ -59,7 +63,10 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                 ),
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    _logger.debug('User navigated back while loading');
+                    Navigator.pop(context);
+                  },
                 ),
               ),
               body: Center(
@@ -82,7 +89,10 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
               ),
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  _logger.debug('User navigated back from detail screen');
+                  Navigator.pop(context);
+                },
               ),
               actions: [
                 // Delete button in app bar
@@ -91,7 +101,10 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                     Icons.delete_outline,
                     color: colorScheme.error,
                   ),
-                  onPressed: () => _showDeleteConfirmationDialog(context, viewModel),
+                  onPressed: () {
+                    _logger.info('Delete button pressed for analysis: ${widget.analysisId}');
+                    _showDeleteConfirmationDialog(context, viewModel);
+                  },
                   tooltip: 'Delete Analysis',
                 ),
               ],
@@ -162,8 +175,13 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     AudioAnalysisDetailViewModel viewModel
   ) async {
     final analysis = viewModel.analysisDetail;
-    if (analysis == null) return;
+    if (analysis == null) {
+      _logger.warning('Delete dialog shown but analysis is null');
+      return;
+    }
 
+    _logger.info('Showing delete confirmation dialog for analysis: ${analysis.id} - "${analysis.title}"');
+    
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -253,14 +271,20 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
+              onPressed: () {
+                _logger.debug('User cancelled deletion');
+                Navigator.of(dialogContext).pop(false);
+              },
               child: Text(
                 'Cancel',
                 style: TextStyle(color: colorScheme.primary),
               ),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
+              onPressed: () {
+                _logger.info('User confirmed deletion');
+                Navigator.of(dialogContext).pop(true);
+              },
               style: FilledButton.styleFrom(
                 backgroundColor: colorScheme.error,
                 foregroundColor: colorScheme.onError,
@@ -274,7 +298,10 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
 
     // If user confirmed deletion
     if (shouldDelete == true) {
+      _logger.info('Proceeding with deletion for analysis: ${analysis.id}');
       await _performDelete(context, viewModel);
+    } else {
+      _logger.debug('Deletion cancelled by user or dialog dismissed');
     }
   }
 
@@ -284,8 +311,12 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
     AudioAnalysisDetailViewModel viewModel
   ) async {
     final analysis = viewModel.analysisDetail;
-    if (analysis?.id == null) return;
+    if (analysis?.id == null) {
+      _logger.error('Cannot perform delete: analysis or analysis ID is null');
+      return;
+    }
 
+    _logger.info('Starting deletion process for analysis: ${analysis!.id} - "${analysis.title}"');
     final colorScheme = Theme.of(context).colorScheme;
 
     try {
@@ -309,6 +340,8 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
 
       // Delete the analysis
       await viewModel.deleteAnalysis();
+      
+      _logger.info('Analysis deleted successfully: ${analysis.id} - "${analysis.title}"');
 
       // Close loading dialog
       if (context.mounted) {
@@ -320,17 +353,20 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
         // Navigate back to previous screen
         Navigator.of(context).pop();
         
+        _logger.debug('Showing success message for deleted analysis');
         // Show success message on the previous screen
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Analysis "${analysis!.title}" deleted successfully'),
+            content: Text('Analysis "${analysis.title}" deleted successfully'),
             backgroundColor: colorScheme.primary,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
           ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      _logger.error('Failed to delete analysis: ${analysis.id}', e, stackTrace);
+      
       // Close loading dialog if still open
       if (context.mounted) {
         Navigator.of(context).pop(); // Close loading dialog
@@ -425,10 +461,12 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
 
     // Check for error status first
     if (analysis?.sendStatus == 2) {
+      _logger.debug('Displaying error card for failed analysis: ${analysis?.id}');
       return _buildErrorCard(context, colorScheme, textTheme, analysis!);
     }
 
     if (analysis?.sendStatus != 1) {
+      _logger.debug('Analysis in progress or pending state: ${analysis?.id}, status: ${analysis?.sendStatus}');
       // Show loading or pending state
       return Card(
         elevation: 2,
@@ -472,8 +510,11 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
         (analysis?.genderResult == null || analysis!.genderResult!.isEmpty) &&
         (analysis?.nationalityResult == null || analysis!.nationalityResult!.isEmpty) &&
         (analysis?.emotionResult == null || analysis!.emotionResult!.isEmpty)) {
+      _logger.warning('Analysis completed but no results available: ${analysis?.id}');
       return const SizedBox.shrink();
     }
+
+    _logger.debug('Displaying analysis results for: ${analysis?.id}');
 
     // Use AnalysisFormatUtils for consistent parsing
     final ageText = AnalysisFormatUtils.parseAgeResult(analysis?.ageResult);
@@ -700,10 +741,12 @@ class _AudioAnalysisDetailScreenState extends State<AudioAnalysisDetailScreen> {
                           vm.isRetrying
                               ? null
                               : () async {
+                                _logger.info('Retry button pressed for failed analysis: ${analysis.id}');
                                 await vm.retryAnalysis();
 
                                 // Show feedback to user
                                 if (context.mounted) {
+                                  _logger.debug('Showing retry initiated message to user');
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text('Analysis retry initiated'),

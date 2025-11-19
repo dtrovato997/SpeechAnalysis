@@ -7,6 +7,7 @@ import 'package:mobile_speech_recognition/ui/core/ui/analysis_list/widgets/analy
 import 'package:mobile_speech_recognition/ui/core/ui/upload_audio/widgets/upload_audio_screen.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/settings/widgets/settings_screen.dart';
 import 'package:mobile_speech_recognition/services/microphone_permission_service.dart';
+import 'package:mobile_speech_recognition/services/logger_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -16,6 +17,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final _logger = LoggerService();
+  
   // Define a consistent horizontal padding value
   final double horizontalPadding = 16.0;
   late HomeViewModel viewModel;
@@ -26,7 +29,14 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _logger.info('HomePage initialized');
     viewModel = HomeViewModel(context);
+  }
+
+  @override
+  void dispose() {
+    _logger.debug('HomePage disposing');
+    super.dispose();
   }
 
   @override
@@ -54,6 +64,7 @@ class _HomePageState extends State<HomePage> {
               color: colorScheme.primary,
             ),
             onPressed: () {
+              _logger.debug('Settings button pressed');
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -78,6 +89,7 @@ class _HomePageState extends State<HomePage> {
         indicatorColor: colorScheme.primaryContainer,
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
+          _logger.debug('Tab changed from $_currentIndex to $index');
           setState(() {
             _currentIndex = index;
           });
@@ -194,6 +206,7 @@ class _HomePageState extends State<HomePage> {
               ),
               TextButton(
                 onPressed: () {
+                  _logger.debug('View all recent analyses button pressed');
                   // Simply switch to the analysis tab
                   setState(() {
                     _currentIndex = 1;
@@ -216,6 +229,7 @@ class _HomePageState extends State<HomePage> {
             viewModel: viewModel,
             horizontalPadding: horizontalPadding,
             onItemTap: (item) {
+              _logger.debug('Recent analysis item tapped: ${item.id} - "${item.title}"');
               // Handle tap on carousel item
               if (item.id != null) {
                 Navigator.push(
@@ -227,6 +241,8 @@ class _HomePageState extends State<HomePage> {
                         ),
                   ),
                 );
+              } else {
+                _logger.warning('Attempted to navigate to analysis detail with null ID');
               }
             },
           ),
@@ -254,7 +270,10 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: InkWell(
-                onTap: () => _handleRecordAudioTap(),
+                onTap: () {
+                  _logger.info('Record Speech card tapped');
+                  _handleRecordAudioTap();
+                },
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Row(
@@ -313,6 +332,7 @@ class _HomePageState extends State<HomePage> {
               ),
               child: InkWell(
                 onTap: () {
+                  _logger.info('Upload Audio card tapped');
                   showModalBottomSheet(
                     constraints: BoxConstraints(
                       maxHeight: MediaQuery.of(context).size.height * 0.95,
@@ -376,34 +396,45 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _handleRecordAudioTap() async {
+    _logger.info('Handling record audio tap - checking microphone permissions');
+    
     try {
       final isGranted = await _permissionService.isPermissionGranted();
+      _logger.debug('Microphone permission status: ${isGranted ? "granted" : "not granted"}');
 
       if (isGranted) {
+        _logger.info('Microphone permission already granted, showing recording screen');
         _showRecordingScreen();
         return;
       }
 
+      _logger.info('Requesting microphone permission');
       final result = await _permissionService.requestPermission();
+      _logger.info('Permission request result: $result');
 
       switch (result) {
         case PermissionResult.granted:
+          _logger.info('Permission granted, showing recording screen');
           _showRecordingScreen();
           break;
 
         case PermissionResult.denied:
+          _logger.warning('Microphone permission denied by user');
           _showPermissionDeniedDialog();
           break;
 
         case PermissionResult.permanentlyDenied:
+          _logger.warning('Microphone permission permanently denied');
           _showPermissionPermanentlyDeniedDialog();
           break;
 
         case PermissionResult.error:
+          _logger.error('Error occurred while requesting microphone permission');
           _showPermissionErrorDialog();
           break;
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      _logger.error('Unexpected error in _handleRecordAudioTap', e, stackTrace);
       // Handle any unexpected errors
       _showPermissionErrorDialog();
     }
@@ -411,6 +442,7 @@ class _HomePageState extends State<HomePage> {
 
   /// Show the recording screen
   void _showRecordingScreen() {
+    _logger.debug('Showing recording screen modal');
     showModalBottomSheet(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.95,
@@ -428,6 +460,7 @@ class _HomePageState extends State<HomePage> {
 
   /// Show dialog when permission is denied
   void _showPermissionDeniedDialog() {
+    _logger.debug('Showing permission denied dialog');
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -459,11 +492,15 @@ class _HomePageState extends State<HomePage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                _logger.debug('User cancelled permission request');
+                Navigator.of(context).pop();
+              },
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () {
+                _logger.info('User chose to retry permission request');
                 Navigator.of(context).pop();
                 // Try requesting permission again
                 _handleRecordAudioTap();
@@ -482,6 +519,7 @@ class _HomePageState extends State<HomePage> {
 
   /// Show dialog when permission is permanently denied
   void _showPermissionPermanentlyDeniedDialog() {
+    _logger.debug('Showing permission permanently denied dialog');
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -508,11 +546,15 @@ class _HomePageState extends State<HomePage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                _logger.debug('User cancelled opening settings');
+                Navigator.of(context).pop();
+              },
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () async {
+                _logger.info('Opening app settings for permission management');
                 Navigator.of(context).pop();
                 // Open app settings
                 await _permissionService.openSettings();
@@ -531,6 +573,7 @@ class _HomePageState extends State<HomePage> {
 
   /// Show dialog when there's an error with permission handling
   void _showPermissionErrorDialog() {
+    _logger.debug('Showing permission error dialog');
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -562,11 +605,15 @@ class _HomePageState extends State<HomePage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                _logger.debug('User cancelled error retry');
+                Navigator.of(context).pop();
+              },
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () {
+                _logger.info('User chose to retry after error');
                 Navigator.of(context).pop();
                 // Try again
                 _handleRecordAudioTap();

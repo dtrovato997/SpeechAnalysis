@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
 import 'package:mobile_speech_recognition/utils/analysis_format_utils.dart';
+import 'package:mobile_speech_recognition/services/logger_service.dart';
 
 class AnalysisCard extends StatelessWidget {
+  final _logger = LoggerService();
   final AudioAnalysis analysis;
   final VoidCallback? onTap;
   final bool showDetails;
   
-  const AnalysisCard({
+  AnalysisCard({
     Key? key,
     required this.analysis,
     this.onTap,
@@ -43,6 +45,7 @@ class AnalysisCard extends StatelessWidget {
         onTap: onTap ?? () {
           // Default navigation if no onTap provided
           if (analysis.id != null) {
+            _logger.debug('AnalysisCard tapped - Navigating to detail: ${analysis.id} - "${analysis.title}"');
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -51,6 +54,8 @@ class AnalysisCard extends StatelessWidget {
                 ),
               ),
             );
+          } else {
+            _logger.warning('AnalysisCard tapped but analysis ID is null');
           }
         },
         child: Padding(

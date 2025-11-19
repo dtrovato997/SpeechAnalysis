@@ -5,6 +5,7 @@ import 'package:mobile_speech_recognition/ui/core/ui/home_page/view_models/home_
 import 'package:flutter_carousel_widget/flutter_carousel_widget.dart';
 import 'package:mobile_speech_recognition/utils/date_time_utils.dart';
 import 'package:mobile_speech_recognition/ui/core/ui/analysis_detail/widgets/audio_analysis_detail_screen.dart';
+import 'package:mobile_speech_recognition/services/logger_service.dart';
 
 class RecentAnalysisViewPager extends StatefulWidget {
   final double viewportFraction;
@@ -25,21 +26,27 @@ class RecentAnalysisViewPager extends StatefulWidget {
 }
 
 class _RecentAnalysisViewPagerState extends State<RecentAnalysisViewPager> {
+  final _logger = LoggerService();
   int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
+    _logger.debug('RecentAnalysisViewPager initialized');
   }
   
   @override
   void dispose() {
+    _logger.debug('RecentAnalysisViewPager disposing');
     super.dispose();
   }
   
   @override
   void didUpdateWidget(RecentAnalysisViewPager oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.viewModel != widget.viewModel) {
+      _logger.debug('RecentAnalysisViewPager viewModel updated');
+    }
   }
 
   @override
@@ -53,6 +60,7 @@ class _RecentAnalysisViewPagerState extends State<RecentAnalysisViewPager> {
       animation: widget.viewModel,
       builder: (context, _) {
         if (widget.viewModel.isLoading) {
+          _logger.debug('RecentAnalysisViewPager showing loading state');
           return Center(
             child: CircularProgressIndicator(
               color: colorScheme.primary,
@@ -61,6 +69,7 @@ class _RecentAnalysisViewPagerState extends State<RecentAnalysisViewPager> {
         }
         
         if (widget.viewModel.hasError) {
+          _logger.warning('RecentAnalysisViewPager showing error state: ${widget.viewModel.error}');
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -74,6 +83,7 @@ class _RecentAnalysisViewPagerState extends State<RecentAnalysisViewPager> {
         
         // Handle empty state
         if (widget.viewModel.isEmpty) {
+          _logger.debug('RecentAnalysisViewPager showing empty state');
           return Center(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: widget.horizontalPadding),
@@ -97,9 +107,13 @@ class _RecentAnalysisViewPagerState extends State<RecentAnalysisViewPager> {
         // If items count changed, we need to recreate the PageController
         // with the appropriate viewportFraction
         final items = widget.viewModel.items;
+        _logger.debug('RecentAnalysisViewPager displaying ${items.length} analyses');
       
         MediaQueryData mediaQuery = MediaQuery.of(context);
         double screenWidth = mediaQuery.size.width;
+        final viewportFraction = items.length == 1 ? 1.0 : (screenWidth > 600 ? 0.4 : 0.9);
+        
+        _logger.debug('RecentAnalysisViewPager viewport fraction: $viewportFraction (screen width: $screenWidth)');
 
         // Return the carousel widget
         return ExpandableCarousel.builder(
@@ -109,10 +123,10 @@ class _RecentAnalysisViewPagerState extends State<RecentAnalysisViewPager> {
             pageSnapping: true,
             padEnds: false,
             physics: const ClampingScrollPhysics(),
-            viewportFraction: items.length == 1 ? 1.0 : (screenWidth > 600 ? 0.4 : 0.9),
+            viewportFraction: viewportFraction,
           ),
           itemBuilder:(context, index, viewPageIndex) {
-            final analysis = items[index];                  
+            final analysis = items[index];
             return Padding(
               padding: const EdgeInsets.only(
                 right: 16.0, 
@@ -120,18 +134,20 @@ class _RecentAnalysisViewPagerState extends State<RecentAnalysisViewPager> {
                 bottom: 24.0,
               ),
               child: AnalysisCard(
-            analysis: analysis,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AudioAnalysisDetailScreen(
-                    analysisId: analysis.id!,
-                  ),
-                ),
-              );
-            },
-          ));
+                analysis: analysis,
+                onTap: () {
+                  _logger.debug('Recent analysis card tapped in carousel: ${analysis.id} - "${analysis.title}"');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AudioAnalysisDetailScreen(
+                        analysisId: analysis.id!,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
           }
         );
       },

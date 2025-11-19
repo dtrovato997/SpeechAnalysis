@@ -1,6 +1,7 @@
 // lib/ui/core/widgets/save_audio_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile_speech_recognition/services/logger_service.dart';
 
 /// Data class to hold the result from SaveAudioDialog
 class SaveAudioResult {
@@ -65,6 +66,7 @@ class SaveAudioDialog extends StatefulWidget {
 }
 
 class _SaveAudioDialogState extends State<SaveAudioDialog> {
+  final _logger = LoggerService();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   bool _isTitleEmpty = false;
@@ -72,6 +74,7 @@ class _SaveAudioDialogState extends State<SaveAudioDialog> {
   @override
   void initState() {
     super.initState();
+    _logger.debug('SaveAudioDialog initialized - Type: ${widget.dialogTitle}');
     _initializeDialog();
   }
 
@@ -79,16 +82,19 @@ class _SaveAudioDialogState extends State<SaveAudioDialog> {
     // Set initial values
     if (widget.initialTitle != null) {
       _titleController.text = widget.initialTitle!;
+      _logger.debug('Using provided initial title: "${widget.initialTitle}"');
     } else {
       // Generate default title with date
       final now = DateTime.now();
       final dateFormatter = DateFormat('dd_MM_yyyy_HH:mm');
       final formattedDate = dateFormatter.format(now);
       _titleController.text = '${widget.titlePrefix}_$formattedDate';
+      _logger.debug('Generated default title: "${_titleController.text}"');
     }
 
     if (widget.initialDescription != null) {
       _descriptionController.text = widget.initialDescription!;
+      _logger.debug('Using provided initial description (${widget.initialDescription!.length} chars)');
     }
 
     // Listen for title changes to update validation
@@ -101,6 +107,7 @@ class _SaveAudioDialogState extends State<SaveAudioDialog> {
 
   @override
   void dispose() {
+    _logger.debug('SaveAudioDialog disposing');
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -208,7 +215,10 @@ class _SaveAudioDialogState extends State<SaveAudioDialog> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(null),
+                  onPressed: () {
+                    _logger.info('SaveAudioDialog cancelled by user');
+                    Navigator.of(context).pop(null);
+                  },
                   child: Text(
                     'Cancel',
                     style: TextStyle(color: colorScheme.primary),
@@ -234,7 +244,10 @@ class _SaveAudioDialogState extends State<SaveAudioDialog> {
   }
 
   void _handleSave() {
-    if (_isTitleEmpty) return;
+    if (_isTitleEmpty) {
+      _logger.warning('Save attempted with empty title');
+      return;
+    }
 
     final result = SaveAudioResult(
       title: _titleController.text.trim(),
@@ -243,6 +256,8 @@ class _SaveAudioDialogState extends State<SaveAudioDialog> {
           : _descriptionController.text.trim(),
     );
 
+    _logger.info('SaveAudioDialog saved - Title: "${result.title}", Has description: ${result.description != null}');
+    
     Navigator.of(context).pop(result);
   }
 }
