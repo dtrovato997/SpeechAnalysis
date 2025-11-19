@@ -1,7 +1,6 @@
 // lib/data/repositories/audio_analysis_repository.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/config/database_config.dart';
-import 'package:mobile_speech_recognition/data/repositories/tag_repository.dart';
 import 'package:mobile_speech_recognition/data/services/audio_analysis_api_service.dart';
 import 'package:mobile_speech_recognition/data/services/audio_analysis_local_service.dart';
 import 'package:mobile_speech_recognition/data/services/database_service.dart';
@@ -11,7 +10,6 @@ import 'package:sqflite/sqflite.dart';
 
 class AudioAnalysisRepository extends ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
-  final TagRepository _tagRepository = TagRepository();
   final FileManagementService _fileManagementService = FileManagementService();
   final AudioAnalysisApiService _apiService = AudioAnalysisApiService();
   final LocalInferenceService _localInferenceService = LocalInferenceService();
@@ -215,9 +213,6 @@ class AudioAnalysisRepository extends ChangeNotifier {
       return AudioAnalysis.fromMap(maps[i]);
     });
 
-    for (var analysis in list) {
-      analysis.tags = await _tagRepository.getTagsByAnalysisId(analysis.id!);
-    }
     return list;
   }
 

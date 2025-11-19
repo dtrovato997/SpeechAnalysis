@@ -1,12 +1,9 @@
-
 class DatabaseConfig {
   static const String databaseName = 'SpeechAnalysis.db';
-  static const int databaseVersion = 4;
+  static const int databaseVersion = 5; // Incrementata la versione
 
   // Table names
   static const String analysisTable = 'AudioAnalysis';
-  static const String tagTable = 'Tag';
-  static const String analysisTagTable = 'AudioAnalysisTag';
 
   // Create table scripts
   static final List<String> createTableScripts = [
@@ -30,25 +27,6 @@ class DatabaseConfig {
       NATIONALITY_USER_FEEDBACK INTEGER,
       EMOTION_USER_FEEDBACK INTEGER
     )
-    ''',
-    
-    // Tag table
-    '''
-    CREATE TABLE $tagTable (
-      _id INTEGER PRIMARY KEY AUTOINCREMENT,
-      NAME TEXT NOT NULL UNIQUE
-    )
-    ''',
-    
-    // Junction table for many-to-many relationship
-    '''
-    CREATE TABLE $analysisTagTable (
-      analysis_id INTEGER NOT NULL,
-      tag_id INTEGER NOT NULL,
-      PRIMARY KEY (analysis_id, tag_id),
-      FOREIGN KEY (analysis_id) REFERENCES $analysisTable(_id) ON DELETE CASCADE,
-      FOREIGN KEY (tag_id) REFERENCES $tagTable(_id) ON DELETE CASCADE
-    )
     '''
   ];
 
@@ -59,5 +37,14 @@ class DatabaseConfig {
       'ALTER TABLE $analysisTable ADD COLUMN EMOTION_RESULT TEXT',
       'ALTER TABLE $analysisTable ADD COLUMN EMOTION_USER_FEEDBACK INTEGER',
     ],
+    5: [
+      // Remove tag-related tables
+      'DROP TABLE IF EXISTS $analysisTagTable',
+      'DROP TABLE IF EXISTS $tagTable',
+    ],
   };
+  
+  // Nomi delle tabelle rimosse (per riferimento nella migrazione)
+  static const String tagTable = 'Tag';
+  static const String analysisTagTable = 'AudioAnalysisTag';
 }

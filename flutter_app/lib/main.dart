@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_speech_recognition/data/repositories/audio_analysis_repository.dart';
-import 'package:mobile_speech_recognition/data/repositories/tag_repository.dart';
 import 'package:mobile_speech_recognition/data/services/audio_analysis_local_service.dart';
 import 'package:mobile_speech_recognition/services/exception_handler_service.dart';
 import 'package:mobile_speech_recognition/services/logger_service.dart';
@@ -23,9 +22,6 @@ void main() async {
       providers: [
         ChangeNotifierProvider<AudioAnalysisRepository>(
           create: (_) => AudioAnalysisRepository(),
-        ),
-        ChangeNotifierProvider<TagRepository>(
-          create: (_) => TagRepository(),
         ),
         ChangeNotifierProvider<ThemeProvider>(
           create: (context) {
@@ -59,7 +55,7 @@ Future<void> initializeApp() async {
   
     // Initialize logger first
     await logger.initialize();
-    logger.info('🚀 Starting Speech Recognition App');
+    logger.info('Starting Speech Recognition App');
 
     // Initialize global exception handler
     GlobalExceptionHandler().initialize();
@@ -68,15 +64,15 @@ Future<void> initializeApp() async {
     try {
       final dbService = DatabaseService();
       await dbService.database;
-      logger.info('✅ Database initialized successfully');
+      logger.info('Database initialized successfully');
     } catch (e, stackTrace) {
-      logger.error('❌ Error initializing database', e, stackTrace);
+      logger.error('Error initializing database', e, stackTrace);
       rethrow; // Critical error - app cannot function without database
     }
 
-    logger.info('✅ App initialization completed successfully');
+    logger.info('App initialization completed successfully');
   } catch (e, stackTrace) {
-    logger.fatal('💥 Critical error during app initialization', e, stackTrace);
+    logger.fatal('Critical error during app initialization', e, stackTrace);
     rethrow;
   }
 }
