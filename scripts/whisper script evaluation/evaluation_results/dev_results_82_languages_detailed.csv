@@ -1,0 +1,11 @@
+ground_truth,prediction,confidence,correct
+English,English,0.9772870540618896,True
+English,English,0.9390072226524353,True
+English,English,0.9961968660354614,True
+English,English,0.9937817454338074,True
+English,English,0.9015631675720215,True
+English,English,0.976680338382721,True
+English,English,0.9866344928741455,True
+English,English,0.9748055338859558,True
+English,English,0.9663403034210205,True
+English,English,0.9892616271972656,True

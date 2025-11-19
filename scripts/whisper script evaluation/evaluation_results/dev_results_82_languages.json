@@ -1,0 +1,30 @@
+{
+  "dev_mode": true,
+  "accuracy": 1.0,
+  "num_samples": 10,
+  "num_languages": 1,
+  "languages": [
+    "English"
+  ],
+  "classification_report": {
+    "English": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 10.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 10.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 10.0
+    }
+  }
+}
