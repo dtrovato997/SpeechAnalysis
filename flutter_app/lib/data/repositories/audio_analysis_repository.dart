@@ -1,7 +1,6 @@
 // lib/data/repositories/audio_analysis_repository.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/config/database_config.dart';
-import 'package:mobile_speech_recognition/data/services/audio_analysis_api_service.dart';
 import 'package:mobile_speech_recognition/data/services/audio_analysis_local_service.dart';
 import 'package:mobile_speech_recognition/data/services/database_service.dart';
 import 'package:mobile_speech_recognition/domain/models/audio_analysis/audio_analysis.dart';
@@ -11,7 +10,6 @@ import 'package:sqflite/sqflite.dart';
 class AudioAnalysisRepository extends ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
   final FileManagementService _fileManagementService = FileManagementService();
-  final AudioAnalysisApiService _apiService = AudioAnalysisApiService();
   final LocalInferenceService _localInferenceService = LocalInferenceService();
 
   // Constants for send status
@@ -122,12 +120,8 @@ class AudioAnalysisRepository extends ChangeNotifier {
       
       String errorMessage;
       
-      if (e is HttpException) {
-        errorMessage = e.message;
-      } else {
-        errorMessage = 'An internal error occurred during analysis processing.';
-      }
-      
+      errorMessage = 'An internal error occurred during analysis processing.';
+
       final errorAnalysis = analysis.copyWith(
         sendStatus: SEND_STATUS_ERROR,
         errorMessage: errorMessage,
@@ -278,11 +272,6 @@ class AudioAnalysisRepository extends ChangeNotifier {
     if(doNotify) {
       notifyListeners();
     }
-  }
-
-  /// Check server connectivity
-  Future<bool> isServerAvailable() async {
-    return await _apiService.checkServerHealth();
   }
 
   /// Manually send a specific analysis to server (useful for testing)

@@ -1,6 +1,3 @@
-
-import 'package:mobile_speech_recognition/domain/models/tag/tag.dart';
-
 class AudioAnalysis {
   final int? id;
   final String title;
@@ -18,13 +15,11 @@ class AudioAnalysis {
   final bool? genderFeedback;
   final bool? nationalityFeedback;
   final bool? emotionFeedback; 
-  List<Tag>? tags;
 
   AudioAnalysis({
     this.id,
     required this.title,
     this.description,
-    this.tags,
     required this.sendStatus,
     this.errorMessage,
     required this.recordingPath,
@@ -61,7 +56,6 @@ class AudioAnalysis {
       genderFeedback: map['GENDER_USER_FEEDBACK'] == 1,
       nationalityFeedback: map['NATIONALITY_USER_FEEDBACK'] == 1,
       emotionFeedback: map['EMOTION_USER_FEEDBACK'] == 1, 
-      tags: null,
     );
   }
 
@@ -92,7 +86,6 @@ class AudioAnalysis {
     int? id,
     String? title,
     String? description,
-    List<Tag>? tags,
     int? sendStatus,
     String? errorMessage,
     String? recordingPath,
@@ -111,7 +104,6 @@ class AudioAnalysis {
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
-      tags: tags ?? this.tags,
       sendStatus: sendStatus ?? this.sendStatus,
       errorMessage: errorMessage ?? this.errorMessage,
       recordingPath: recordingPath ?? this.recordingPath,

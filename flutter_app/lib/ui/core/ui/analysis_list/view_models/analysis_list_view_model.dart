@@ -110,13 +110,6 @@ class AnalysisListViewModel extends ChangeNotifier {
         final description = analysis.description?.toLowerCase() ?? '';
         final matchesDescription = description.contains(query);
         
-        // Check tags
-        bool matchesTag = false;
-        if (analysis.tags != null) {
-          matchesTag = analysis.tags!.any((tag) => 
-            tag.name.toLowerCase().contains(query)
-          );
-        }
         
         // Check age
         final ageText = AnalysisFormatUtils.parseAgeResult(analysis.ageResult).toLowerCase();
@@ -134,7 +127,7 @@ class AnalysisListViewModel extends ChangeNotifier {
         final emotionText = AnalysisFormatUtils.parseEmotionResult(analysis.emotionResult).toLowerCase();
         final matchesEmotion = emotionText.contains(query);
         
-        return matchesTitle || matchesDescription || matchesTag || 
+        return matchesTitle || matchesDescription || 
                matchesAge || matchesGender || matchesNationality || matchesEmotion;
       }).toList();
       
