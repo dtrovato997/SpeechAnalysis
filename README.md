@@ -1,6 +1,6 @@
 # Speech Analysis App
 
-An Android application writte in Flutter for analyzing speech audio to predict **age**, **gender**, **nationality**, and **emotion** using on-device AI inference with ONNX Runtime.
+An Android application written in Flutter for analyzing speech audio to predict **age**, **gender**, **nationality**, and **emotion** using on-device AI inference with ONNX Runtime.
 
 ## Features
 
@@ -19,26 +19,49 @@ An Android application writte in Flutter for analyzing speech audio to predict *
 - **Language/Nationality Detection**: 99+ language identification using Whisper
 - **Emotion Recognition**: 8-emotion classification (angry, happy, sad, neutral, etc.)
 
-## Architecture
+---
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Flutter Mobile App                  │
-├─────────────────────────────────────────────────────────┤
-│  • Record/Upload Audio     • Analysis History          │
-│  • Local Audio Processing • Results Visualization      │
-│  • SQLite Database        • Theme Management           │
-└─────────────────┬───────────────────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────────────────┐
-│              ONNX Runtime (On-Device)                  │
-├─────────────────────────────────────────────────────────┤
-│  • Age & Gender Model     • Emotion Recognition        │
-│  • Whisper Language Model • Audio Preprocessing        │
-│  • FFmpeg Audio Pipeline  • Real-time Inference       │
-└─────────────────────────────────────────────────────────┘
-```
+## Model Evaluation
+
+Comprehensive evaluation scripts for all models are available in the `evaluation_scripts/` directory:
+
+### Available Evaluation Scripts
+
+#### **Age & Gender Model**
+- **Script**: `evaluation_age_gender.py`
+- **Dataset**: Mozilla Common Voice (German, 1,110 samples)
+- **Documentation**: [README_AGE_GENDER.md](./evaluation_scripts/README_AGE_GENDER.md)
+- **Results**:
+  - Gender Accuracy: **96.3%**
+  - Age MAE: **10.55 years**
+
+#### **Emotion Recognition Model**
+- **Script**: `evaluation_emotion.py`
+- **Dataset**: SSI Speech Emotion Recognition (1,999 samples)
+- **Documentation**: [README_EMOTION.md](./evaluation_scripts/README_EMOTION.md)
+- **Results**:
+  - Overall Accuracy: **82.14%**
+  - Best emotions: Surprised (94.8%), Angry (88.1%)
+
+#### **Whisper Language Identification**
+- **Script**: `evaluation_whisper.py`
+- **Dataset**: FLEURS (63,344 samples, 82 languages)
+- **Documentation**: [README_WHISPER.md](./evaluation_scripts/README_WHISPER.md)
+- **Results**:
+  - 82-Language Accuracy: **55.97%**
+  - Top languages: Mandarin Chinese (93.6%), Vietnamese (92.2%)
+
+### Evaluation Features
+
+Each evaluation script includes:
+- ✅ Automatic dataset download from Hugging Face
+- ✅ Comprehensive metrics (accuracy, precision, recall, F1-score)
+- ✅ Confusion matrices and performance visualizations
+- ✅ Detailed per-class results
+- ✅ Comparison with original paper results
+- ✅ Resume functionality for long evaluations
+
+---
 
 ## Model Citations
 
@@ -51,8 +74,8 @@ This project uses pre-trained models from Hugging Face:
 - License: CC-BY-4.0
 
 ### Emotion Recognition  
-**Dpngtm/wav2vec2-emotion-recognition**
-- Repository: https://huggingface.co/Dpngtm/wav2vec2-emotion-recognition  
+**prithivMLmods/Speech-Emotion-Classification**
+- Repository: https://huggingface.co/prithivMLmods/Speech-Emotion-Classification  
 - Wav2Vec2 model fine-tuned for emotion classification
 - Supports 8 emotion classes: angry, calm, disgust, fearful, happy, neutral, sad, surprised
 
@@ -63,6 +86,8 @@ This project uses pre-trained models from Hugging Face:
 - Supports 99+ languages with high accuracy
 - License: MIT
 
+---
+
 ## Prerequisites
 
 ### For Flutter App
@@ -71,10 +96,16 @@ This project uses pre-trained models from Hugging Face:
 - Android Studio / Xcode (for mobile development)
 - Android device or emulator
 
+### For Evaluation Scripts
+- Python 3.8+
+- See individual evaluation README files for dependencies
+
 ### System Requirements
 - **Mobile**: Android 7.0+ (API 24+) or iOS 12.0+
 - **Storage**: ~500MB for models and app data
 - **RAM**: 4GB+ recommended for optimal performance
+
+---
 
 ## Installation
 
@@ -112,6 +143,28 @@ flutter run
 flutter run -d android
 ```
 
+---
+
+## Running Evaluation Scripts
+
+To evaluate the models on standard benchmarks:
+
+```bash
+cd evaluation_scripts
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Run specific evaluation (see individual READMEs for details)
+python evaluation_age_gender.py --audio-dir /path/to/commonvoice/clips
+python evaluation_emotion.py
+python evaluation_whisper.py
+```
+
+Refer to the individual README files in `evaluation_scripts/` for detailed instructions.
+
+---
+
 ## Technical Details
 
 ### Audio Processing Pipeline
@@ -122,14 +175,30 @@ flutter run -d android
 5. **Results**: Age, gender, language, and emotion predictions
 
 ### Model Performance
-- **Age Prediction**: Mean Absolute Error ~6 years
-- **Gender Classification**: 95%+ accuracy  
-- **Language Detection**: 99+ languages supported
-- **Emotion Recognition**: 8-class emotion detection
+
+Performance metrics based on comprehensive evaluations (see `evaluation_scripts/` for details):
+
+| Model | Metric | Value | Dataset | Samples |
+|-------|--------|-------|---------|---------|
+| **Age Prediction** | MAE | 10.55 years | CommonVoice (de) | 1,110 |
+| **Gender Classification** | Accuracy | 96.3% | CommonVoice (de) | 1,110 |
+| **Language Detection** | Accuracy | 55.97% | FLEURS | 63,344 |
+| **Emotion Recognition** | Accuracy | 82.14% | SSI | 1,999 |
+
+### Quantization Impact
+
+All models are quantized to INT8 for mobile deployment:
+- **Model size reduction**: ~93% (FP32 → INT8)
+- **Inference speed**: 2-7 seconds per sample (on-device)
+- **Accuracy trade-off**: Minimal degradation (1.5-3% typical)
+
+---
 
 ## License
 
 This project is licensed under the MIT License. See individual model repositories for their respective licenses.
+
+---
 
 ## Acknowledgments
 
@@ -137,3 +206,4 @@ This project is licensed under the MIT License. See individual model repositorie
 - **ONNX Runtime** for cross-platform inference
 - **Flutter** team for the mobile framework
 - **FFmpeg** for audio processing capabilities
+- **Mozilla Common Voice**, **Google FLEURS**, and **SSI** for evaluation datasets
