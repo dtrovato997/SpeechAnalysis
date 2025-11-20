@@ -2,10 +2,31 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_speech_recognition/ui/core/themes/theme_provider.dart';
 import 'package:mobile_speech_recognition/services/logger_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String _version = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    setState(() {
+      _version = packageInfo.version;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,46 +54,63 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
       backgroundColor: colorScheme.surfaceBright,
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
+      body: Stack(
         children: [
-          // Theme Section
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Appearance',
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+          ListView(
+            padding: const EdgeInsets.all(16.0),
+            children: [
+              // Theme Section
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Appearance',
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ListTile(
+                        leading: Icon(
+                          Icons.palette_outlined,
+                          color: colorScheme.primary,
+                        ),
+                        title: const Text('Theme'),
+                        subtitle: Consumer<ThemeProvider>(
+                          builder: (context, themeProvider, child) {
+                            return Text(themeProvider.themeDisplayName);
+                          },
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          _logger.info('Theme selector opened');
+                          _showThemeSelector(context);
+                        },
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    leading: Icon(
-                      Icons.palette_outlined,
-                      color: colorScheme.primary,
-                    ),
-                    title: const Text('Theme'),
-                    subtitle: Consumer<ThemeProvider>(
-                      builder: (context, themeProvider, child) {
-                        return Text(themeProvider.themeDisplayName);
-                      },
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      _logger.info('Theme selector opened');
-                      _showThemeSelector(context);
-                    },
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ],
+                ),
+              ),
+              const SizedBox(height: 80), // Space for version text
+            ],
+          ),
+          // Version text at bottom right
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Text(
+              'v$_version',
+              style: textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onTertiaryContainer.withOpacity(1),
+                fontWeight: FontWeight.bold
               ),
             ),
           ),
