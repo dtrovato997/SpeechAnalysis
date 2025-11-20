@@ -1,0 +1,62 @@
+{
+  "dev_mode": false,
+  "num_samples": 1110,
+  "num_skipped": 0,
+  "age": {
+    "mae": 10.551961435283626
+  },
+  "gender": {
+    "accuracy": 0.9630630630630631,
+    "classification_report": {
+      "child": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 0.0
+      },
+      "female": {
+        "precision": 0.9912739965095986,
+        "recall": 0.9435215946843853,
+        "f1-score": 0.9668085106382979,
+        "support": 602.0
+      },
+      "male": {
+        "precision": 0.9364485981308411,
+        "recall": 0.9862204724409449,
+        "f1-score": 0.9606903163950143,
+        "support": 508.0
+      },
+      "accuracy": 0.9630630630630631,
+      "macro avg": {
+        "precision": 0.6425741982134799,
+        "recall": 0.6432473557084434,
+        "f1-score": 0.642499609011104,
+        "support": 1110.0
+      },
+      "weighted avg": {
+        "precision": 0.9661827331074285,
+        "recall": 0.9630630630630631,
+        "f1-score": 0.9640084721918221,
+        "support": 1110.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        568,
+        34,
+        0
+      ],
+      [
+        5,
+        501,
+        2
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ]
+  },
+  "timestamp": "2025-11-20T22:22:14.735604"
+}
