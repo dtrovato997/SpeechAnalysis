@@ -84,7 +84,6 @@ echo 'export HF_HOME=/path/to/datasets' >> ~/.bash_profile
 
 1. **Python 3.11+**
 2. **Internet connection** (for automatic dataset download)
-3. **Disk space**: ~3 GB for dataset cache
 
 ### Installation
 
@@ -117,7 +116,6 @@ The script will:
 3. Run evaluation on all 1,999 samples
 4. Save results and generate visualizations
 
-### Development Mode (Quick Test)
 
 ```bash
 python evaluation_emotion.py
@@ -167,12 +165,12 @@ def main():
 
 ### Key Observations
 
-✅ **Best Performance**:
+ **Best Performance**:
 - **Surprised**: 94.8% F1-score (highest performance)
 - **Angry**: 88.1% F1-score (high recall at 93.5%)
 - **Neutral**: 86.9% F1-score (balanced performance)
 
-⚠️ **Challenging Emotions**:
+ **Challenging Emotions**:
 - **Fearful**: 76.4% F1-score (lowest recall at 70.2%)
 - **Disgust**: 77.7% F1-score (lowest precision at 71.4%)
 - **Happy**: 80.8% F1-score (moderate recall at 73.9%)

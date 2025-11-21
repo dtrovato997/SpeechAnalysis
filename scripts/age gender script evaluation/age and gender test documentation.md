@@ -160,7 +160,6 @@ True  Female    568    34     0
 ```
 
 **Notes**:
-- No "child" samples present in test set
 - Model shows high precision for female classification (99.1%)
 - Model shows high recall for male classification (98.6%)
 - Minor confusion between male/female (39 misclassifications out of 1,110)
@@ -172,9 +171,3 @@ True  Female    568    34     0
 The INT8 quantized model shows acceptable performance degradation:
 - **Age prediction**: +1.75 years MAE (19.9% increase)
 - **Gender classification**: -2.9% accuracy (small decrease)
-
-### Trade-offs
--  **Model size**: ~93% reduction (FP32 → INT8)
--  **Inference speed**: Faster on mobile devices
--  **Accuracy**: Slight degradation in both tasks
--  **Overall**: Good balance for mobile deployment

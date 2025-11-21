@@ -1,12 +1,12 @@
 # Whisper Language Identification Model Evaluation
 
-Evaluation script for the quantized Whisper-tiny language identification model on the FLEURS dataset.
+Evaluation script for the whisper-tiny language identification model on the FLEURS dataset.
 
 ---
 
 ## Overview
 
-This script evaluates a **Whisper-tiny language identification model** (quantized to INT8) to measure its accuracy in identifying languages from speech audio across:
+This script evaluates a **Whisper-tiny language identification model** to measure its accuracy in identifying languages from speech audio across:
 - **82 high-resource languages** (languages with >1000h training data)
 - **102 total languages** (including zero-shot languages)
 
@@ -71,7 +71,6 @@ echo 'export HF_HOME=/path/to/datasets' >> ~/.bash_profile
 - **Detector**: Language classification head
 - **Input**: 16kHz mono audio (up to 30 seconds)
 - **Output**: 99 language classes (model trained on 99 languages)
-- **Quantization**: INT8 (from FP32)
 - **Framework**: ONNX Runtime
 
 **Model Files Required**:
@@ -165,12 +164,12 @@ During evaluation, you can use keyboard controls:
 
 ### Key Observations
 
-✅ **Strengths**:
+**Strengths**:
 - Excellent performance on major languages (English, Chinese, Spanish, French)
 - High precision across most languages
 - Strong recall for widely-used languages
 
-⚠️ **Weaknesses**:
+**Weaknesses**:
 - Significant confusion between similar languages (e.g., Hindi/Urdu, Croatian/Bosnian/Serbian)
 - Low recall for low-resource languages
 - Some languages never predicted (11 languages with 0% recall)
@@ -180,12 +179,8 @@ During evaluation, you can use keyboard controls:
 | Metric | Paper (Whisper Large v2, FP32) | This Eval (Whisper Tiny, INT8) | Delta |
 |--------|--------------------------------|--------------------------------|-------|
 | **82 Languages** | 80.3% | 55.97% | -24.33% |
-| **Model Size** | ~3 GB (FP32) | ~40 MB (INT8) | -98.7% |
 
-**Note**: The significant accuracy drop is due to:
-1. Model size: Tiny (39M params) vs Large (1.5B params) = 38x smaller
-2. Quantization: INT8 vs FP32
-3. Trade-off: 98.7% size reduction for mobile deployment
+**Note**: The significant accuracy drop is due to the model size: Tiny (39M params) vs Large (1.5B params) = 38x smaller
 
 ---
 
@@ -210,10 +205,10 @@ If 102-language evaluation is enabled:
 ### Quantization Impact
 
 The INT8 Whisper-tiny model shows significant performance trade-offs:
-- ⚠️ **Accuracy**: 55.97% (vs 80.3% in paper with Whisper Large)
-- ✅ **Model size**: ~40 MB (98.7% reduction from FP32 Large)
-- ✅ **Inference speed**: Suitable for mobile devices
-- ✅ **Memory footprint**: Minimal RAM usage
+-  **Accuracy**: 55.97% (vs 80.3% in paper with Whisper Large)
+-  **Model size**: ~225 MB
+-  **Inference speed**: Suitable for mobile devices
+-  **Memory footprint**: Minimal RAM usage
 
 ### Model Limitations
 
@@ -222,14 +217,4 @@ The INT8 Whisper-tiny model shows significant performance trade-offs:
 - **Size/accuracy trade-off**: Tiny model sacrifices accuracy for size
 - **Quantization degradation**: INT8 reduces precision
 
-### Recommended Use Cases
 
-✅ **Good for**:
-- Mobile applications with storage constraints
-- Real-time language detection for major languages
-- Privacy-sensitive applications (on-device processing)
-
-⚠️ **Not recommended for**:
-- High-accuracy requirements (>80%)
-- Rare or low-resource languages
-- Critical applications requiring near-perfect accuracy

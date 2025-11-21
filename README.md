@@ -30,7 +30,6 @@ Comprehensive evaluation scripts for all models are available in the `evaluation
 #### **Age & Gender Model**
 - **Script**: `evaluation_age_gender.py`
 - **Dataset**: Mozilla Common Voice (German, 1,110 samples)
-- **Documentation**: [README_AGE_GENDER.md](./evaluation_scripts/README_AGE_GENDER.md)
 - **Results**:
   - Gender Accuracy: **96.3%**
   - Age MAE: **10.55 years**
@@ -38,7 +37,6 @@ Comprehensive evaluation scripts for all models are available in the `evaluation
 #### **Emotion Recognition Model**
 - **Script**: `evaluation_emotion.py`
 - **Dataset**: SSI Speech Emotion Recognition (1,999 samples)
-- **Documentation**: [README_EMOTION.md](./evaluation_scripts/README_EMOTION.md)
 - **Results**:
   - Overall Accuracy: **82.14%**
   - Best emotions: Surprised (94.8%), Angry (88.1%)
@@ -46,7 +44,6 @@ Comprehensive evaluation scripts for all models are available in the `evaluation
 #### **Whisper Language Identification**
 - **Script**: `evaluation_whisper.py`
 - **Dataset**: FLEURS (63,344 samples, 82 languages)
-- **Documentation**: [README_WHISPER.md](./evaluation_scripts/README_WHISPER.md)
 - **Results**:
   - 82-Language Accuracy: **55.97%**
   - Top languages: Mandarin Chinese (93.6%), Vietnamese (92.2%)
@@ -54,12 +51,12 @@ Comprehensive evaluation scripts for all models are available in the `evaluation
 ### Evaluation Features
 
 Each evaluation script includes:
-- ✅ Automatic dataset download from Hugging Face
-- ✅ Comprehensive metrics (accuracy, precision, recall, F1-score)
-- ✅ Confusion matrices and performance visualizations
-- ✅ Detailed per-class results
-- ✅ Comparison with original paper results
-- ✅ Resume functionality for long evaluations
+-  Automatic dataset download from Hugging Face
+-  Comprehensive metrics (accuracy, precision, recall, F1-score)
+-  Confusion matrices and performance visualizations
+-  Detailed per-class results
+-  Comparison with original paper results
+-  Resume functionality for long evaluations
 
 ---
 
@@ -145,26 +142,6 @@ flutter run -d android
 
 ---
 
-## Running Evaluation Scripts
-
-To evaluate the models on standard benchmarks:
-
-```bash
-cd evaluation_scripts
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Run specific evaluation (see individual READMEs for details)
-python evaluation_age_gender.py --audio-dir /path/to/commonvoice/clips
-python evaluation_emotion.py
-python evaluation_whisper.py
-```
-
-Refer to the individual README files in `evaluation_scripts/` for detailed instructions.
-
----
-
 ## Technical Details
 
 ### Audio Processing Pipeline
@@ -187,7 +164,7 @@ Performance metrics based on comprehensive evaluations (see `evaluation_scripts/
 
 ### Quantization Impact
 
-All models are quantized to INT8 for mobile deployment:
+Emotion and Age and Gender models are quantized to INT8 for mobile deployment:
 - **Model size reduction**: ~93% (FP32 → INT8)
 - **Inference speed**: 2-7 seconds per sample (on-device)
 - **Accuracy trade-off**: Minimal degradation (1.5-3% typical)
@@ -204,6 +181,5 @@ This project is licensed under the MIT License. See individual model repositorie
 
 - **Hugging Face** for providing pre-trained models
 - **ONNX Runtime** for cross-platform inference
-- **Flutter** team for the mobile framework
-- **FFmpeg** for audio processing capabilities
+- **Flutter**  for the mobile framework
 - **Mozilla Common Voice**, **Google FLEURS**, and **SSI** for evaluation datasets
