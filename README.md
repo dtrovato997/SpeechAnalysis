@@ -28,14 +28,12 @@ Comprehensive evaluation scripts for all models are available in the `evaluation
 ### Available Evaluation Scripts
 
 #### **Age & Gender Model**
-- **Script**: `evaluation_age_gender.py`
 - **Dataset**: Mozilla Common Voice (German, 1,110 samples)
 - **Results**:
   - Gender Accuracy: **96.3%**
   - Age MAE: **10.55 years**
 
 #### **Emotion Recognition Model**
-- **Script**: `evaluation_emotion.py`
 - **Dataset**: SSI Speech Emotion Recognition (1,999 samples)
 - **Results**:
   - Overall Accuracy: **82.14%**
