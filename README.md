@@ -118,6 +118,7 @@ This project uses pre-trained models from Hugging Face:
 - Repository: https://huggingface.co/prithivMLmods/Speech-Emotion-Classification  
 - Wav2Vec2 model fine-tuned for emotion classification
 - Supports 8 emotion classes: angry, calm, disgust, fearful, happy, neutral, sad, surprised
+- License: Apache 2.0
 
 ### Language Detection
 **openai/whisper-tiny**
