@@ -66,23 +66,26 @@ https://github.com/user-attachments/assets/0276574b-fd62-4fa4-9cf7-c76cf614fa96
 
 ## Model Evaluation
 
-Comprehensive evaluation scripts for all models are available in the `evaluation_scripts/` directory:
+Comprehensive evaluation scripts for all models are available in the `scripts/` directory:
 
 ### Available Evaluation Scripts
 
 #### **Age & Gender Model**
+- **Documentation**: [<u>age and gender test documentation.md</u>](scripts/age%20gender%20script%20evaluation/age%20and%20gender%20test%20documentation.md)
 - **Dataset**: Mozilla Common Voice (German, 1,110 samples)
 - **Results**:
   - Gender Accuracy: **96.3%**
   - Age MAE: **10.55 years**
 
 #### **Emotion Recognition Model**
+- **Documentation**: [<u>emotion test documentation.md</u>](scripts/emotion%20script%20evaluation/emotion%20test%20documentation.md)
 - **Dataset**: SSI Speech Emotion Recognition (1,999 samples)
 - **Results**:
   - Overall Accuracy: **82.14%**
   - Best emotions: Surprised (94.8%), Angry (88.1%)
 
 #### **Whisper Language Identification**
+- **Documentation**: [<u>whisper test documentation.md</u>](scripts/whisper%20script%20evaluation/whisper%20test%20documentation.md)
 - **Dataset**: FLEURS (63,344 samples, 82 languages)
 - **Results**:
   - 82-Language Accuracy: **55.97%**
