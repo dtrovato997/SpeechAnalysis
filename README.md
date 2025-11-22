@@ -83,7 +83,6 @@ Comprehensive evaluation scripts for all models are available in the `evaluation
   - Best emotions: Surprised (94.8%), Angry (88.1%)
 
 #### **Whisper Language Identification**
-- **Script**: `evaluation_whisper.py`
 - **Dataset**: FLEURS (63,344 samples, 82 languages)
 - **Results**:
   - 82-Language Accuracy: **55.97%**
