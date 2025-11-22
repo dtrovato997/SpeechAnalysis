@@ -1,6 +1,41 @@
-# Speech Analysis App
+# <img src="assets/app_icon.png" alt="Speech Analysis Icon" width="50" height="50" style="vertical-align: middle;"/> Speech Analysis
 
 An Android application written in Flutter for analyzing speech audio to predict **age**, **gender**, **nationality**, and **emotion** using on-device AI inference with ONNX Runtime.
+
+---
+
+## App Screenshots
+
+<div style="display: flex; justify-content: space-between; margin: 20px 0;">
+
+### Home Screen
+<img src="assets/HomePage.png" alt="Home Screen" width="250"/>
+
+The main interface provides two options for audio input: record speech directly (up to 30 seconds) or upload existing audio files. Recent analyses are displayed at the bottom for quick access to previous results.
+
+### Audio Recording
+<img src="assets/AudioRecording.png" alt="Audio Recording" width="250"/>
+
+Real-time audio recording with visual waveform feedback. The recording interface includes a timer, pause/resume functionality, and options to save or discard the recording before analysis.
+
+### Audio Upload
+<img src="assets/UploadAudio.png" alt="Upload Audio" width="250"/>
+
+Upload existing audio files (MP3, WAV, M4A) with preview playback and file information display. The interface shows audio duration and allows users to review the file before proceeding with analysis.
+
+### Analysis List
+<img src="assets/AnalysisList.png" alt="Analysis List" width="250"/>
+
+Browse and search through all past analyses with summary cards showing key results (age, gender, nationality, emotion) and timestamps. Quick access to detailed results with a single tap.
+
+### Analysis Details
+<img src="assets/AnalysisDetail.png" alt="Analysis Detail" width="250"/>
+
+Comprehensive analysis results displaying predicted age, gender with confidence scores, detected language, and emotional state. Includes audio playback functionality and the ability to delete individual analyses.
+
+</div>
+
+---
 
 ## Features
 
@@ -49,7 +84,7 @@ Comprehensive evaluation scripts for all models are available in the `evaluation
 ### Evaluation Features
 
 Each evaluation script includes:
--  Automatic dataset download from Hugging Face
+- Automatic dataset download from Hugging Face
 -  Comprehensive metrics (accuracy, precision, recall, F1-score)
 -  Confusion matrices and performance visualizations
 -  Detailed per-class results
@@ -102,7 +137,7 @@ This project uses pre-trained models from Hugging Face:
 
 ---
 
-## Installation
+## Build and deployment
 
 ### 1. Clone Repository
 ```bash
@@ -179,5 +214,5 @@ This project is licensed under the MIT License. See individual model repositorie
 
 - **Hugging Face** for providing pre-trained models
 - **ONNX Runtime** for cross-platform inference
-- **Flutter**  for the mobile framework
+- **Flutter** for the mobile framework
 - **Mozilla Common Voice**, **Google FLEURS**, and **SSI** for evaluation datasets
