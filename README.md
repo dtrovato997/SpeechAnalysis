@@ -137,7 +137,7 @@ This project uses pre-trained models from Hugging Face:
 
 ---
 
-## Installation
+## Build and deployment
 
 ### 1. Clone Repository
 ```bash
