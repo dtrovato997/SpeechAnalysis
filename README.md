@@ -133,11 +133,11 @@ This project uses pre-trained models from Hugging Face:
 ### For Flutter App
 - Flutter SDK 3.7.2 or higher
 - Dart SDK
-- Android Studio / Xcode (for mobile development)
+- Android Studio
 - Android device or emulator
 
 ### For Evaluation Scripts
-- Python 3.8+
+- Python 3.11+
 - See individual evaluation README files for dependencies
 
 ### System Requirements
