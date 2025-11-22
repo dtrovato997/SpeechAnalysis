@@ -35,16 +35,15 @@ Comprehensive analysis results displaying predicted age, gender with confidence 
 
 </div>
 
----
 
-## Demo Video
+## Demo Videos
 
-<video width="320" height="240" controls>
-  <source src="assets/Recording app EN.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
 
----
+https://github.com/user-attachments/assets/66e00e37-cb2b-4ea5-a4a4-3ee95602ee19
+
+https://github.com/user-attachments/assets/0276574b-fd62-4fa4-9cf7-c76cf614fa96
+
+
 
 ## Features
 
